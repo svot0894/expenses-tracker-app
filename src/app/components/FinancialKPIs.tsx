@@ -174,60 +174,6 @@ export function FinancialKPIs({
           </p>
         </div>
       </div>
-
-      {/* Recommendations */}
-      <div className="mt-6 pt-6 border-t border-gray-200">
-        <h3 className="font-medium text-gray-700 mb-3">🎯 Recommendations</h3>
-        <div className="space-y-2">
-          {emergencyFundMonths < 3 && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-800">⚠️ <strong>Build Emergency Fund:</strong> Aim for 3-6 months of expenses in liquid cash</p>
-            </div>
-          )}
-          {emergencyFundMonths >= 3 && emergencyFundMonths < 6 && (
-            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-sm text-yellow-800">💡 <strong>Strengthen Emergency Fund:</strong> You're on track! Try to reach 6 months</p>
-            </div>
-          )}
-          {emergencyFundMonths >= 6 && (
-            <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-sm text-green-800">✅ <strong>Emergency Fund Healthy:</strong> You have a solid safety net</p>
-            </div>
-          )}
-          
-          {savingsRate < 10 && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-800">⚠️ <strong>Increase Savings Rate:</strong> Try to save at least 10-20% of income</p>
-            </div>
-          )}
-          {savingsRate >= 10 && savingsRate < 20 && (
-            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-sm text-yellow-800">💡 <strong>Good Savings Habit:</strong> Consider pushing toward 20%+ for faster FI</p>
-            </div>
-          )}
-          {savingsRate >= 20 && (
-            <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-sm text-green-800">✅ <strong>Excellent Savings Rate:</strong> You're on the fast track to FI!</p>
-            </div>
-          )}
-          
-          {monthlyIncome > 0 && (monthlyExpenses / monthlyIncome) > 0.8 && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-800">⚠️ <strong>High Expense Ratio:</strong> Review expenses to free up more savings</p>
-            </div>
-          )}
-          {monthlyIncome > 0 && (monthlyExpenses / monthlyIncome) > 0.6 && (monthlyExpenses / monthlyIncome) <= 0.8 && (
-            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-sm text-yellow-800">💡 <strong>Moderate Spending:</strong> Look for areas to optimize expenses</p>
-            </div>
-          )}
-          {monthlyIncome > 0 && (monthlyExpenses / monthlyIncome) <= 0.6 && (
-            <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-sm text-green-800">✅ <strong>Controlled Spending:</strong> Great expense management!</p>
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   );
 }

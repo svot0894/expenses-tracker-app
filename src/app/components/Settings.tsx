@@ -1,5 +1,3 @@
-import { CategoryManager } from './CategoryManager';
-
 interface SettingsProps {
   categories: string[];
   onAddCategory: (category: string) => void;
