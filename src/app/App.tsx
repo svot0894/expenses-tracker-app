@@ -8,9 +8,9 @@ import { InvestmentList } from './components/InvestmentList';
 import { ExpenseChart } from './components/ExpenseChart';
 import { InvestmentChart } from './components/InvestmentChart';
 import { IncomeForm, type Income } from './components/IncomeForm';
+import { IncomeList } from './components/IncomeList';
 import { FinancialKPIs } from './components/FinancialKPIs';
 import { CSVUploader } from './components/CSVUploader';
-import { ViewModeSelector } from './components/ViewModeSelector';
 import { ExpenseTrendChart } from './components/ExpenseTrendChart';
 import { ExpenseModal } from './components/ExpenseModal';
 import { InvestmentPerformance } from './components/InvestmentPerformance';
@@ -19,8 +19,6 @@ import { IncomeCashManager } from './components/IncomeCashManager';
 
 function App() {
   const [activeTab, setActiveTab] = useState<'overview' | 'expenses' | 'investments' | 'income' | 'settings'>('overview');
-  const [viewMode, setViewMode] = useState<'all_time' | 'monthly'>('all_time');
-  const [selectedMonth, setSelectedMonth] = useState<string>(new Date().toISOString().substring(0, 7));
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | undefined>(undefined);
   const [customCategories, setCustomCategories] = useState<string[]>([
@@ -171,35 +169,6 @@ function App() {
   const handleDeleteCategory = (category: string) => {
     setCustomCategories(customCategories.filter(cat => cat !== category));
   };
-
-  // Filter data based on view mode
-  const getFilteredExpenses = () => {
-    if (viewMode === 'monthly') {
-      return expenses.filter(e => e.date.startsWith(selectedMonth));
-    }
-    return expenses;
-  };
-
-  const getFilteredIncomes = () => {
-    if (viewMode === 'monthly') {
-      return incomes.filter(i => i.date.startsWith(selectedMonth));
-    }
-    return incomes;
-  };
-
-  // Get available months from data
-  const getAvailableMonths = () => {
-    const allDates = [
-      ...expenses.map(e => e.date),
-      ...incomes.map(i => i.date)
-    ];
-    const months = Array.from(new Set(allDates.map(d => d.substring(0, 7)))).sort().reverse();
-    return months;
-  };
-
-  // Calculate dashboard metrics
-  const filteredExpenses = getFilteredExpenses();
-  const filteredIncomes = getFilteredIncomes();
   
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
   const totalInvestments = investments.reduce((sum, i) => sum + i.currentValue, 0);
@@ -216,8 +185,6 @@ function App() {
   const annualExpenses = totalExpenses * 12;
   const monthlySavings = monthlyIncome - totalExpenses;
   const netWorth = totalInvestments + liquidCash - 0; // Assuming no debt for now
-
-  const availableMonths = getAvailableMonths();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -364,7 +331,6 @@ function App() {
         {/* Income Tab */}
         {activeTab === 'income' && (
           <div className="space-y-6">
-            <CashManager liquidCash={liquidCash} onUpdateCash={setLiquidCash} />
             <IncomeCashManager liquidCash={liquidCash} onUpdateCash={setLiquidCash} />
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-6">
