@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { Wallet } from 'lucide-react';
 import { Dashboard } from './components/Dashboard';
 import { ExpenseList } from './components/ExpenseList';
-import { InvestmentForm, type Investment } from './components/InvestmentForm';
+import { InvestmentForm } from './components/InvestmentForm';
 import { InvestmentList } from './components/InvestmentList';
 import { ExpenseChart } from './components/ExpenseChart';
-import { InvestmentChart } from './components/InvestmentChart';
+//import { InvestmentChart } from './components/InvestmentChart';
 import { IncomeForm, type Income } from './components/IncomeForm';
 import { IncomeList } from './components/IncomeList';
 import { FinancialKPIs } from './components/FinancialKPIs';
@@ -18,6 +18,7 @@ import { IncomeCashManager } from './components/IncomeCashManager';
 
 import { supabase, type Expenses, type ExpenseInsert, type ExpenseUpdate } from '../lib/supabase';
 import { type Categories } from '../lib/supabase';
+import { type Investments, type InvestmentInsert } from '../lib/supabase';
 
 function App() {
   const [activeTab, setActiveTab] = useState<'overview' | 'expenses' | 'investments' | 'income' | 'settings'>('overview');
@@ -27,25 +28,7 @@ function App() {
   // State for categories and expenses
   const [categories, setCategories] = useState<Categories[]>([]);
   const [expenses, setExpenses] = useState<Expenses[]>([]);
-
-  const [investments, setInvestments] = useState<Investment[]>([
-    {
-      id: '1',
-      name: 'Apple Inc.',
-      type: 'Stocks',
-      amount: 5000,
-      currentValue: 5850,
-      purchaseDate: '2025-06-15'
-    },
-    {
-      id: '2',
-      name: 'S&P 500 ETF',
-      type: 'ETFs',
-      amount: 10000,
-      currentValue: 11200,
-      purchaseDate: '2025-01-10'
-    }
-  ]);
+  const [investments, setInvestments] = useState<Expenses[]>([]);
 
   const [incomes, setIncomes] = useState<Income[]>([
     {
@@ -86,6 +69,16 @@ function App() {
 
       if (!expensesError && expensesData) {
         setExpenses(expensesData);
+      };
+
+      // Fetch investments
+      const { data: investmentsData, error: investmentsError } = await supabase
+        .from('investments')
+        .select('*')
+        .order('purchasedate', { ascending: false });
+
+      if (!investmentsError && investmentsData) {
+        setInvestments(investmentsData);
       }
     };
 
@@ -169,15 +162,33 @@ function App() {
   };
 
   // Handlers for investments
-  const handleAddInvestment = (investment: Omit<Investment, 'id'>) => {
-    const newInvestment = {
-      ...investment,
-      id: Date.now().toString()
+  const handleAddInvestment = async(investment: Omit<Investments, 'id'>) => {
+    const insertData : InvestmentInsert = {
+      ...investment
     };
-    setInvestments([newInvestment, ...investments]);
+    const { data, error } = await supabase
+      .from('investments')
+      .insert(insertData)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error adding investment:', error);
+      return;
+    }
+    setInvestments([data, ...investments]);
   };
 
-  const handleDeleteInvestment = (id: string) => {
+  const handleDeleteInvestment = async (id: string) => {
+    const { error } = await supabase
+      .from('investments')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting investment:', error);
+      return;
+    }
     setInvestments(investments.filter(i => i.id !== id));
   };
 
@@ -229,7 +240,7 @@ function App() {
   
   // Calculate financial metrics
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
-  const totalInvestments = investments.reduce((sum, i) => sum + i.currentValue, 0);
+  const totalInvestments = investments.reduce((sum, i) => sum + i.currentvalue, 0);
   const totalInvestmentCost = investments.reduce((sum, i) => sum + i.amount, 0);
   const investmentGain = totalInvestments - totalInvestmentCost;
   const totalBalance = totalInvestments - totalExpenses;

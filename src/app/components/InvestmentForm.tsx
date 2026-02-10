@@ -1,17 +1,9 @@
 import { useState } from 'react';
 import { Plus, X } from 'lucide-react';
-
-export interface Investment {
-  id: string;
-  name: string;
-  type: string;
-  amount: number;
-  currentValue: number;
-  purchaseDate: string;
-}
+import type { Investments } from '../../lib/supabase';
 
 interface InvestmentFormProps {
-  onAddInvestment: (investment: Omit<Investment, 'id'>) => void;
+  onAddInvestment: (investment: Omit<Investments, 'id'>) => void;
 }
 
 const investmentTypes = [
@@ -26,25 +18,25 @@ const investmentTypes = [
 
 export function InvestmentForm({ onAddInvestment }: InvestmentFormProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
   const [type, setType] = useState(investmentTypes[0]);
   const [amount, setAmount] = useState('');
-  const [currentValue, setCurrentValue] = useState('');
-  const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
+  const [currentvalue, setCurrentValue] = useState('');
+  const [purchasedate, setPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !amount || !currentValue) return;
+    if (!description || !amount || !currentvalue) return;
 
     onAddInvestment({
-      name,
+      description,
       type,
       amount: parseFloat(amount),
-      currentValue: parseFloat(currentValue),
-      purchaseDate
+      currentvalue: parseFloat(currentvalue),
+      purchasedate
     });
 
-    setName('');
+    setDescription('');
     setType(investmentTypes[0]);
     setAmount('');
     setCurrentValue('');
@@ -77,8 +69,8 @@ export function InvestmentForm({ onAddInvestment }: InvestmentFormProps) {
           <label className="block text-sm font-medium text-gray-700 mb-1">Investment Name</label>
           <input
             type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
             placeholder="e.g., Apple Stock"
             required
@@ -113,7 +105,7 @@ export function InvestmentForm({ onAddInvestment }: InvestmentFormProps) {
           <input
             type="number"
             step="0.01"
-            value={currentValue}
+            value={currentvalue}
             onChange={(e) => setCurrentValue(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
             placeholder="0.00"
@@ -124,7 +116,7 @@ export function InvestmentForm({ onAddInvestment }: InvestmentFormProps) {
           <label className="block text-sm font-medium text-gray-700 mb-1">Purchase Date</label>
           <input
             type="date"
-            value={purchaseDate}
+            value={purchasedate}
             onChange={(e) => setPurchaseDate(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
             required

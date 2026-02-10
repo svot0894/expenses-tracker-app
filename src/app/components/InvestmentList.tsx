@@ -1,8 +1,8 @@
 import { Trash2, TrendingUp, TrendingDown } from 'lucide-react';
-import type { Investment } from './InvestmentForm';
+import type { Investments } from '../../lib/supabase';
 
 interface InvestmentListProps {
-  investments: Investment[];
+  investments: Investments[];
   onDeleteInvestment: (id: string) => void;
 }
 
@@ -29,7 +29,7 @@ export function InvestmentList({ investments, onDeleteInvestment }: InvestmentLi
     <div className="bg-white rounded-lg shadow overflow-hidden">
       <div className="divide-y divide-gray-200">
         {investments.map((investment) => {
-          const gain = investment.currentValue - investment.amount;
+          const gain = investment.currentvalue - investment.amount;
           const gainPercent = (gain / investment.amount) * 100;
           const isPositive = gain >= 0;
 
@@ -38,13 +38,13 @@ export function InvestmentList({ investments, onDeleteInvestment }: InvestmentLi
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-1">
-                    <h4 className="font-medium text-gray-900">{investment.name}</h4>
+                    <h4 className="font-medium text-gray-900">{investment.description}</h4>
                     <span className={`text-xs px-2 py-1 rounded-full ${typeColors[investment.type]}`}>
                       {investment.type}
                     </span>
                   </div>
                   <p className="text-sm text-gray-500">
-                    Purchased: {new Date(investment.purchaseDate).toLocaleDateString()}
+                    Purchased: {new Date(investment.purchasedate).toLocaleDateString()}
                   </p>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-sm text-gray-600">
@@ -52,7 +52,7 @@ export function InvestmentList({ investments, onDeleteInvestment }: InvestmentLi
                     </span>
                     <span className="text-gray-400">→</span>
                     <span className="text-sm text-gray-600">
-                      Current: ${investment.currentValue.toFixed(2)}
+                      Current: ${investment.currentvalue.toFixed(2)}
                     </span>
                   </div>
                 </div>

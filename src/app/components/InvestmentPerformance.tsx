@@ -1,8 +1,8 @@
 import { TrendingUp, TrendingDown } from 'lucide-react';
-import type { Investment } from './InvestmentForm';
+import type { Investments } from '../../lib/supabase';
 
 interface InvestmentPerformanceProps {
-  investments: Investment[];
+  investments: Investments[];
 }
 
 export function InvestmentPerformance({ investments }: InvestmentPerformanceProps) {
@@ -18,7 +18,7 @@ export function InvestmentPerformance({ investments }: InvestmentPerformanceProp
   }
 
   const totalInvested = investments.reduce((sum, inv) => sum + inv.amount, 0);
-  const totalCurrent = investments.reduce((sum, inv) => sum + inv.currentValue, 0);
+  const totalCurrent = investments.reduce((sum, inv) => sum + inv.currentvalue, 0);
   const totalGain = totalCurrent - totalInvested;
   const totalGainPercent = (totalGain / totalInvested) * 100;
 
@@ -53,16 +53,16 @@ export function InvestmentPerformance({ investments }: InvestmentPerformanceProp
       <div className="space-y-4">
         <h4 className="font-medium text-gray-700">Individual Holdings</h4>
         {investments.map((inv) => {
-          const gain = inv.currentValue - inv.amount;
+          const gain = inv.currentvalue - inv.amount;
           const gainPercent = (gain / inv.amount) * 100;
           const isPositive = gain >= 0;
-          const allocationPercent = (inv.currentValue / totalCurrent) * 100;
+          const allocationPercent = (inv.currentvalue / totalCurrent) * 100;
 
           return (
             <div key={inv.id} className="border border-gray-200 rounded-lg p-4">
               <div className="flex items-start justify-between mb-2">
                 <div className="flex-1">
-                  <h5 className="font-semibold text-gray-900">{inv.name}</h5>
+                  <h5 className="font-semibold text-gray-900">{inv.description}</h5>
                   <p className="text-sm text-gray-500">{inv.type}</p>
                 </div>
                 <div className="text-right">
@@ -85,7 +85,7 @@ export function InvestmentPerformance({ investments }: InvestmentPerformanceProp
                 </div>
                 <div>
                   <p className="text-gray-500">Current</p>
-                  <p className="font-medium">${inv.currentValue.toLocaleString()}</p>
+                  <p className="font-medium">${inv.currentvalue.toLocaleString()}</p>
                 </div>
                 <div>
                   <p className="text-gray-500">Allocation</p>
