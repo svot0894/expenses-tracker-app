@@ -1,5 +1,8 @@
+import { type Categories } from '../../lib/supabase';
+import { CategoryManager } from './CategoryManager';
+
 interface SettingsProps {
-  categories: string[];
+  categories: Categories[];
   onAddCategory: (category: string) => void;
   onDeleteCategory: (category: string) => void;
 }

@@ -1,8 +1,8 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import type { Expense } from './ExpenseForm';
+import type { Expenses } from '../../lib/supabase';
 
 interface ExpenseTrendChartProps {
-  expenses: Expense[];
+  expenses: Expenses[];
 }
 
 export function ExpenseTrendChart({ expenses }: ExpenseTrendChartProps) {
@@ -22,10 +22,15 @@ export function ExpenseTrendChart({ expenses }: ExpenseTrendChartProps) {
 
   const data = Object.entries(monthlyData)
     .map(([month, amount]) => ({
-      month: new Date(month + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+      month: month, // Keep ISO for sorting
+      displayMonth: new Date(month + '-01').toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
       amount
     }))
-    .sort((a, b) => a.month.localeCompare(b.month));
+    .sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime()) // ✅ Sort chronologically
+    .map(({ month, displayMonth, amount }) => ({
+      month: displayMonth, // Use formatted month for chart
+      amount
+    }));
 
   if (data.length < 2) {
     return null;

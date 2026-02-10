@@ -1,8 +1,9 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
-import type { Expense } from './ExpenseForm';
+import type { Expenses } from '../../lib/supabase';
 
 interface ExpenseChartProps {
-  expenses: Expense[];
+  expenses: Expenses[];
+  categories: { id: string; name: string }[];
 }
 
 const COLORS = [
@@ -15,9 +16,10 @@ const COLORS = [
   '#6b7280'  // gray
 ];
 
-export function ExpenseChart({ expenses }: ExpenseChartProps) {
+export function ExpenseChart({ expenses, categories }: ExpenseChartProps) {
   const categoryTotals = expenses.reduce((acc, expense) => {
-    acc[expense.category] = (acc[expense.category] || 0) + expense.amount;
+    const category = categories.find(c => c.id === expense.category_id)?.name || 'Unknown';
+    acc[category] = (acc[category] || 0) + expense.amount;
     return acc;
   }, {} as Record<string, number>);
 

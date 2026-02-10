@@ -1,49 +1,49 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import type { Expense } from './ExpenseForm';
+import type { Expenses } from '../../lib/supabase';
 
 interface ExpenseModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (expense: Omit<Expense, 'id'>) => void;
-  categories: string[];
-  expense?: Expense;
+  onSave: (expense: Omit<Expenses, 'id'>) => void;
+  categories: { id: string; name: string }[];
+  expense?: Expenses;
 }
 
 export function ExpenseModal({ isOpen, onClose, onSave, categories, expense }: ExpenseModalProps) {
-  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState(categories[0] || '');
+  const [category, setCategory] = useState<string | null>(null);
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
     if (expense) {
-      setTitle(expense.title);
+      setDescription(expense.description);
       setAmount(expense.amount.toString());
-      setCategory(expense.category);
+      setCategory(expense.category_id);
       setDate(expense.date);
     } else {
-      setTitle('');
+      setDescription('');
       setAmount('');
-      setCategory(categories[0] || '');
+      setCategory(categories[0]?.id || null);
       setDate(new Date().toISOString().split('T')[0]);
     }
   }, [expense, categories]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !amount) return;
+    if (!description || !amount || !category) return;
 
     onSave({
-      title,
+      description,
       amount: parseFloat(amount),
-      category,
+      category_id: category,
       date
     });
 
-    setTitle('');
+    setDescription('');
     setAmount('');
-    setCategory(categories[0] || '');
+    setCategory(categories[0]?.id || null);
     setDate(new Date().toISOString().split('T')[0]);
     onClose();
   };
@@ -61,11 +61,11 @@ export function ExpenseModal({ isOpen, onClose, onSave, categories, expense }: E
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
             <input
               type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="e.g., Grocery shopping"
               required
@@ -86,12 +86,12 @@ export function ExpenseModal({ isOpen, onClose, onSave, categories, expense }: E
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
             <select
-              value={category}
+              value={category || ''}
               onChange={(e) => setCategory(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               {categories.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
+                <option key={cat.id} value={cat.id}>{cat.name}</option>
               ))}
             </select>
           </div>

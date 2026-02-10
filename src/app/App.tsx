@@ -1,7 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Wallet } from 'lucide-react';
 import { Dashboard } from './components/Dashboard';
-import type { Expense } from './components/ExpenseForm';
 import { ExpenseList } from './components/ExpenseList';
 import { InvestmentForm, type Investment } from './components/InvestmentForm';
 import { InvestmentList } from './components/InvestmentList';
@@ -17,43 +16,17 @@ import { InvestmentPerformance } from './components/InvestmentPerformance';
 import { Settings } from './components/Settings';
 import { IncomeCashManager } from './components/IncomeCashManager';
 
+import { supabase, type Expenses, type ExpenseInsert, type ExpenseUpdate } from '../lib/supabase';
+import { type Categories } from '../lib/supabase';
+
 function App() {
   const [activeTab, setActiveTab] = useState<'overview' | 'expenses' | 'investments' | 'income' | 'settings'>('overview');
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
-  const [editingExpense, setEditingExpense] = useState<Expense | undefined>(undefined);
-  const [customCategories, setCustomCategories] = useState<string[]>([
-    'Food & Dining',
-    'Transportation',
-    'Shopping',
-    'Entertainment',
-    'Bills & Utilities',
-    'Healthcare',
-    'Other'
-  ]);
+  const [editingExpense, setEditingExpense] = useState<Expenses | undefined>(undefined);
   
-  const [expenses, setExpenses] = useState<Expense[]>([
-    {
-      id: '1',
-      title: 'Grocery Shopping',
-      amount: 125.50,
-      category: 'Food & Dining',
-      date: '2026-02-01'
-    },
-    {
-      id: '2',
-      title: 'Gas Station',
-      amount: 45.00,
-      category: 'Transportation',
-      date: '2026-02-02'
-    },
-    {
-      id: '3',
-      title: 'Netflix Subscription',
-      amount: 15.99,
-      category: 'Entertainment',
-      date: '2026-02-03'
-    }
-  ]);
+  // State for categories and expenses
+  const [categories, setCategories] = useState<Categories[]>([]);
+  const [expenses, setExpenses] = useState<Expenses[]>([]);
 
   const [investments, setInvestments] = useState<Investment[]>([
     {
@@ -93,19 +66,82 @@ function App() {
 
   const [liquidCash, setLiquidCash] = useState(15000); // Emergency fund
 
-  const handleAddExpense = (expense: Omit<Expense, 'id'>) => {
-    const newExpense = {
-      ...expense,
-      id: Date.now().toString()
+  // Fetch data from Supabase on mount
+  useEffect(() => {
+    const fetchData = async () => {
+      // Fetch categories
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('categories')
+        .select('*');
+
+      if (!categoriesError && categoriesData) {
+        setCategories(categoriesData);
+      };
+
+      // Fetch expenses
+      const { data: expensesData, error: expensesError } = await supabase
+        .from('expenses')
+        .select('*')
+        .order('date', { ascending: false });
+
+      if (!expensesError && expensesData) {
+        setExpenses(expensesData);
+      }
     };
-    setExpenses([newExpense, ...expenses]);
+
+    fetchData();
+  }, []);
+
+  // Handlers for expenses
+  const handleCloseExpenseModal = () => {
+    setIsExpenseModalOpen(false);
+    setEditingExpense(undefined);
   };
 
-  const handleUpdateExpense = (expense: Omit<Expense, 'id'>) => {
+  const handleImportExpenses = (importedExpenses: Omit<Expenses, 'id'>[]) => {
+    const newExpenses = importedExpenses.map(exp => ({
+      ...exp,
+      id: Date.now().toString() + Math.random().toString()
+    }));
+    setExpenses([...newExpenses, ...expenses]);
+  };
+
+  const handleAddExpense = async (expense: Omit<Expenses, 'id'>) => {
+    const insertData : ExpenseInsert = {
+      ...expense
+    };
+    const { data, error } = await supabase
+      .from('expenses')
+      .insert(insertData)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error adding expense:', error);
+      return;
+    }
+    setExpenses([data, ...expenses]);
+  };
+
+  const handleUpdateExpense = async (expense: Omit<Expenses, 'id'>) => {
     if (editingExpense) {
+      const updateData : ExpenseUpdate = {
+        ...expense
+      };
+      const { data, error } = await supabase
+        .from('expenses')
+        .update(updateData)
+        .eq('id', editingExpense.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating expense:', error);
+        return;
+      }
       setExpenses(expenses.map(e => 
         e.id === editingExpense.id 
-          ? { ...expense, id: editingExpense.id }
+          ? { ...data }
           : e
       ));
       setEditingExpense(undefined);
@@ -114,20 +150,25 @@ function App() {
     }
   };
 
-  const handleEditExpense = (expense: Expense) => {
+  const handleEditExpense = (expense: Expenses) => {
     setEditingExpense(expense);
     setIsExpenseModalOpen(true);
   };
 
-  const handleCloseExpenseModal = () => {
-    setIsExpenseModalOpen(false);
-    setEditingExpense(undefined);
-  };
+  const handleDeleteExpense = async (id: string) => {
+    const { error } = await supabase
+      .from('expenses')
+      .delete()
+      .eq('id', id);
 
-  const handleDeleteExpense = (id: string) => {
+    if (error) {
+      console.error('Error deleting expense:', error);
+      return;
+    }
     setExpenses(expenses.filter(e => e.id !== id));
   };
 
+  // Handlers for investments
   const handleAddInvestment = (investment: Omit<Investment, 'id'>) => {
     const newInvestment = {
       ...investment,
@@ -140,6 +181,7 @@ function App() {
     setInvestments(investments.filter(i => i.id !== id));
   };
 
+  // Handlers for income
   const handleAddIncome = (income: Omit<Income, 'id'>) => {
     const newIncome = {
       ...income,
@@ -152,24 +194,40 @@ function App() {
     setIncomes(incomes.filter(i => i.id !== id));
   };
 
-  const handleImportExpenses = (importedExpenses: Omit<Expense, 'id'>[]) => {
-    const newExpenses = importedExpenses.map(exp => ({
-      ...exp,
-      id: Date.now().toString() + Math.random().toString()
-    }));
-    setExpenses([...newExpenses, ...expenses]);
-  };
+  // Handlers for categories
+  const handleAddCategory = async (category: string) => {
+    if (category && !categories.some(c => c.name === category)) {
+      const { data, error } = await supabase
+        .from('categories')
+        .insert({ name: category })
+        .select()
+        .single();
 
-  const handleAddCategory = (category: string) => {
-    if (category && !customCategories.includes(category)) {
-      setCustomCategories([...customCategories, category]);
+      if (!error && data) {
+        setCategories([...categories, data]);
+      } else {
+        console.error('Error adding category:', error);
+      }
     }
   };
 
-  const handleDeleteCategory = (category: string) => {
-    setCustomCategories(customCategories.filter(cat => cat !== category));
+  const handleDeleteCategory = async (category: string) => {
+    const categoryToDelete = categories.find(c => c.name === category);
+    if (categoryToDelete) {
+      const { error } = await supabase
+        .from('categories')
+        .delete()
+        .eq('id', categoryToDelete.id);
+
+      if (!error) {
+        setCategories(categories.filter(cat => cat.id !== categoryToDelete.id));
+      } else {
+        console.error('Error deleting category:', error);
+      }
+    }
   };
   
+  // Calculate financial metrics
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
   const totalInvestments = investments.reduce((sum, i) => sum + i.currentValue, 0);
   const totalInvestmentCost = investments.reduce((sum, i) => sum + i.amount, 0);
@@ -279,7 +337,10 @@ function App() {
               investmentCost={totalInvestmentCost}
             />
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <ExpenseChart expenses={expenses} />
+              <ExpenseChart
+                expenses={expenses}
+                categories={categories}
+              />
               <InvestmentPerformance investments={investments} />
             </div>
           </div>
@@ -304,10 +365,14 @@ function App() {
                   expenses={expenses} 
                   onDeleteExpense={handleDeleteExpense}
                   onEditExpense={handleEditExpense}
+                  categories={categories}
                 />
               </div>
               <div>
-                <ExpenseChart expenses={expenses} />
+                <ExpenseChart
+                  expenses={expenses}
+                  categories={categories}
+                />
               </div>
             </div>
           </div>
@@ -344,7 +409,7 @@ function App() {
         {/* Settings Tab */}
         {activeTab === 'settings' && (
           <Settings
-            categories={customCategories}
+            categories={categories}
             onAddCategory={handleAddCategory}
             onDeleteCategory={handleDeleteCategory}
           />
@@ -355,7 +420,7 @@ function App() {
           isOpen={isExpenseModalOpen}
           onClose={handleCloseExpenseModal}
           onSave={handleUpdateExpense}
-          categories={customCategories}
+          categories={categories}
           expense={editingExpense}
         />
       </main>
