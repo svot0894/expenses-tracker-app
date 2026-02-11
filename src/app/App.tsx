@@ -28,7 +28,7 @@ function App() {
   // State for categories and expenses
   const [categories, setCategories] = useState<Categories[]>([]);
   const [expenses, setExpenses] = useState<Expenses[]>([]);
-  const [investments, setInvestments] = useState<Expenses[]>([]);
+  const [investments, setInvestments] = useState<Investments[]>([]);
 
   const [incomes, setIncomes] = useState<Income[]>([
     {
@@ -47,7 +47,7 @@ function App() {
     }
   ]);
 
-  const [liquidCash, setLiquidCash] = useState(15000); // Emergency fund
+  const [liquidCash, setLiquidCash] = useState(80000); // Emergency fund
 
   // Fetch data from Supabase on mount
   useEffect(() => {
