@@ -92,12 +92,37 @@ function App() {
     setEditingExpense(undefined);
   };
 
-  const handleImportExpenses = (importedExpenses: Omit<Expenses, 'id'>[]) => {
+  const handleImportExpenses = async (importedExpenses: Omit<Expenses, 'id'>[]) => {
     const newExpenses = importedExpenses.map(exp => ({
-      ...exp,
-      id: Date.now().toString() + Math.random().toString()
+      description: exp.description,
+      amount: exp.amount,
+      category_id: categories.find(c => c.name === exp.category)?.id || "",
+      date: exp.date
     }));
-    setExpenses([...newExpenses, ...expenses]);
+
+    // Wait for all inserts to complete
+    const insertedExpenses = await Promise.all(
+      newExpenses.map(async (expense) => {
+        const insertData: ExpenseInsert = { ...expense };
+        const { data, error } = await supabase
+          .from('expenses')
+          .insert(insertData)
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Error adding expense:', error);
+          return null;
+        }
+        return data;
+      })
+    );
+
+    // Filter out any failed inserts and update state once
+    const validExpenses = insertedExpenses.filter((e): e is Expenses => e !== null);
+
+    // Update state with all new expenses at once
+    setExpenses(prev => [...validExpenses, ...prev]);
   };
 
   const handleAddExpense = async (expense: Omit<Expenses, 'id'>) => {
