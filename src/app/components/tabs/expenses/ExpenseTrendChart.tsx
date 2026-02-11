@@ -1,5 +1,5 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import type { Expenses } from '../../lib/supabase';
+import type { Expenses } from '../../../../lib/supabase';
 
 interface ExpenseTrendChartProps {
   expenses: Expenses[];

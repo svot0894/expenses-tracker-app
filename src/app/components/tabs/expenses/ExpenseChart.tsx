@@ -1,5 +1,5 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
-import type { Expenses } from '../../lib/supabase';
+import type { Expenses } from '../../../lib/supabase';
 
 interface ExpenseChartProps {
   expenses: Expenses[];

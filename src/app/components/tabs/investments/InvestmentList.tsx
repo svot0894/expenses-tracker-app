@@ -1,5 +1,5 @@
 import { Trash2, TrendingUp, TrendingDown } from 'lucide-react';
-import type { Investments } from '../../lib/supabase';
+import type { Investments } from '../../../../lib/supabase';
 
 interface InvestmentListProps {
   investments: Investments[];

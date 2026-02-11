@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Plus, X } from 'lucide-react';
-import type { Investments } from '../../lib/supabase';
+import type { Investments } from '../../../../lib/supabase';
 
 interface InvestmentFormProps {
   onAddInvestment: (investment: Omit<Investments, 'id'>) => void;

@@ -1,5 +1,5 @@
 import { TrendingUp, TrendingDown } from 'lucide-react';
-import type { Investments } from '../../lib/supabase';
+import type { Investments } from '../../../../lib/supabase';
 
 interface InvestmentPerformanceProps {
   investments: Investments[];

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Trash2 } from 'lucide-react';
-import type { Categories } from '../../lib/supabase';
+import type { Categories } from '../../../../lib/supabase';
 
 interface CategoryManagerProps {
   categories: Categories[];

@@ -1,5 +1,5 @@
 import { Trash2, Edit2 } from 'lucide-react';
-import type { Expenses } from '../../lib/supabase';
+import type { Expenses } from '../../../../lib/supabase';
 
 interface ExpenseListProps {
   expenses: Expenses[];

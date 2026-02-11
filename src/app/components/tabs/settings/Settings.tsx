@@ -1,4 +1,4 @@
-import { type Categories } from '../../lib/supabase';
+import { type Categories } from '../../../../lib/supabase';
 import { CategoryManager } from './CategoryManager';
 
 interface SettingsProps {

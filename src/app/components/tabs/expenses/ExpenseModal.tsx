@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-import type { Expenses } from '../../lib/supabase';
+import type { Expenses } from '../../../../lib/supabase';
 
 interface ExpenseModalProps {
   isOpen: boolean;
