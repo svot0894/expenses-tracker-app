@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Wallet } from 'lucide-react';
+import { Wallet, Upload } from 'lucide-react';
 import { Dashboard } from './components/tabs/overview/Dashboard';
 import { ExpenseList } from './components/tabs/expenses/ExpenseList';
 import { InvestmentForm } from './components/tabs/investments/InvestmentForm';
@@ -9,7 +9,7 @@ import { ExpenseChart } from './components/tabs/expenses/ExpenseChart';
 import { IncomeForm, type Income } from './components/tabs/incomes/IncomeForm';
 import { IncomeList } from './components/tabs/incomes/IncomeList';
 import { FinancialKPIs } from './components/tabs/overview/FinancialKPIs';
-import { CSVUploader } from './components/tabs/expenses/CSVUploader';
+import { CSVModal } from './components/tabs/expenses/CSVModal';
 import { ExpenseTrendChart } from './components/tabs/expenses/ExpenseTrendChart';
 import { ExpenseModal } from './components/tabs/expenses/ExpenseModal';
 import { InvestmentPerformance } from './components/tabs/investments/InvestmentPerformance';
@@ -23,6 +23,7 @@ import { type Investments, type InvestmentInsert } from '../lib/supabase';
 function App() {
   const [activeTab, setActiveTab] = useState<'overview' | 'expenses' | 'investments' | 'income' | 'settings'>('overview');
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
+  const [isCSVModalOpen, setIsCSVModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expenses | undefined>(undefined);
   
   // State for categories and expenses
@@ -369,7 +370,13 @@ function App() {
                   >
                     + Add Expense
                   </button>
-                  <CSVUploader onImportExpenses={handleImportExpenses} />
+                  <button
+                    onClick={() => setIsCSVModalOpen(true)}
+                    className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                  >
+                    <Upload size={20} />
+                    Import CSV
+                  </button>
                 </div>
                 <ExpenseTrendChart expenses={expenses} />
                 <ExpenseList 
@@ -433,6 +440,13 @@ function App() {
           onSave={handleUpdateExpense}
           categories={categories}
           expense={editingExpense}
+        />
+
+        {/* CSV Import Modal */}
+        <CSVModal
+          isOpen={isCSVModalOpen}
+          onClose={() => setIsCSVModalOpen(false)}
+          onImportExpenses={handleImportExpenses}
         />
       </main>
     </div>
