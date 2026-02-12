@@ -22,6 +22,10 @@ import { type Investments, type InvestmentInsert } from '../lib/supabase';
 import { type Incomes, type IncomeInsert } from '../lib/supabase';
 
 function App() {
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
   const [activeTab, setActiveTab] = useState<'overview' | 'expenses' | 'investments' | 'income' | 'settings'>('overview');
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [isCSVModalOpen, setIsCSVModalOpen] = useState(false);
@@ -37,6 +41,9 @@ function App() {
   // Fetch data from Supabase on mount
   useEffect(() => {
     const fetchData = async () => {
+      const thisMonth = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1);
+      const nextMonth = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 1);
+
       // Fetch categories
       const { data: categoriesData, error: categoriesError } = await supabase
         .from('categories')
@@ -50,6 +57,8 @@ function App() {
       const { data: expensesData, error: expensesError } = await supabase
         .from('expenses')
         .select('*')
+        .gte('date', thisMonth.toISOString())
+        .lt('date', nextMonth.toISOString())
         .order('date', { ascending: false });
 
       if (!expensesError && expensesData) {
@@ -78,7 +87,7 @@ function App() {
     };
 
     fetchData();
-  }, []);
+  }, [selectedMonth]);
 
   // Handlers for expenses
   const handleCloseExpenseModal = () => {
@@ -288,12 +297,53 @@ function App() {
       {/* Header */}
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center gap-3">
-            <Wallet className="text-blue-600" size={32} />
-            <h1 className="text-3xl font-bold text-gray-900">Finance Tracker</h1>
+          <div className="flex items-center justify-between">
+
+            {/* Left Side */}
+            <div className="flex items-center gap-3">
+              <Wallet className="text-blue-600" size={32} />
+              <h1 className="text-3xl font-bold text-gray-900">
+                Finance Tracker
+              </h1>
+            </div>
+
+            {/* Right Side Month Controls */}
+            <div className="flex items-center gap-3 bg-gray-100 rounded-xl px-3 py-2 shadow-sm">
+
+              <button
+                onClick={() =>
+                  setSelectedMonth(prev =>
+                    new Date(prev.getFullYear(), prev.getMonth() - 1, 1)
+                  )
+                }
+                className="px-3 py-1.5 text-sm font-medium rounded-lg bg-white shadow hover:bg-gray-50 transition"
+              >
+                ←
+              </button>
+
+              <span className="min-w-[140px] text-center font-semibold text-gray-700">
+                {selectedMonth.toLocaleString('default', {
+                  month: 'long',
+                  year: 'numeric',
+                })}
+              </span>
+
+              <button
+                onClick={() =>
+                  setSelectedMonth(prev =>
+                    new Date(prev.getFullYear(), prev.getMonth() + 1, 1)
+                  )
+                }
+                className="px-3 py-1.5 text-sm font-medium rounded-lg bg-white shadow hover:bg-gray-50 transition"
+              >
+                →
+              </button>
+
+            </div>
           </div>
         </div>
       </header>
+
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Dashboard */}
