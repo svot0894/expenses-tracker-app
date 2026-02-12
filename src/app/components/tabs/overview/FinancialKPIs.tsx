@@ -55,7 +55,7 @@ export function FinancialKPIs({
             </div>
             <h3 className="font-medium text-gray-700">Net Worth</h3>
           </div>
-          <p className="text-2xl font-bold text-gray-900">${netWorth.toLocaleString()}</p>
+          <p className="text-2xl font-bold text-gray-900">₣ {netWorth.toLocaleString()}</p>
           <p className="text-xs text-gray-500 mt-1">Total assets - liabilities</p>
         </div>
 
@@ -83,7 +83,7 @@ export function FinancialKPIs({
           </div>
           <p className="text-2xl font-bold text-gray-900">{savingsRate.toFixed(1)}%</p>
           <p className="text-xs text-gray-500 mt-1">
-            ${monthlySavings.toLocaleString()}/mo saved
+            ₣ {monthlySavings.toLocaleString()}/mo saved
           </p>
         </div>
 
@@ -97,7 +97,7 @@ export function FinancialKPIs({
           </div>
           <p className="text-2xl font-bold text-gray-900">{emergencyFundMonths.toFixed(1)} months</p>
           <p className="text-xs text-gray-500 mt-1">
-            ${liquidCash.toLocaleString()} in cash
+            ₣ {liquidCash.toLocaleString()} in cash
           </p>
         </div>
 
@@ -159,7 +159,7 @@ export function FinancialKPIs({
           </div>
           <div className="bg-orange-50 rounded-lg p-4">
             <p className="text-sm font-medium text-orange-900 mb-1">Average Daily Spending</p>
-            <p className="text-xl font-bold text-orange-700">${(monthlyExpenses / 30).toFixed(2)}</p>
+            <p className="text-xl font-bold text-orange-700">₣ {(monthlyExpenses / 30).toFixed(2)}</p>
             <p className="text-xs text-orange-600 mt-1">Based on monthly average</p>
           </div>
         </div>

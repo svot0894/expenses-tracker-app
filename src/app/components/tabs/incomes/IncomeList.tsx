@@ -31,7 +31,7 @@ export function IncomeList({ incomes, onDeleteIncome }: IncomeListProps) {
                 <p className="text-sm text-gray-500">{new Date(income.date).toLocaleDateString()}</p>
               </div>
               <div className="flex items-center gap-4">
-                <p className="text-lg font-semibold text-green-600">${income.amount.toLocaleString()}</p>
+                <p className="text-lg font-semibold text-green-600">₣{income.amount.toLocaleString()}</p>
                 <button
                   onClick={() => onDeleteIncome(income.id)}
                   className="text-red-600 hover:text-red-700 transition-colors"

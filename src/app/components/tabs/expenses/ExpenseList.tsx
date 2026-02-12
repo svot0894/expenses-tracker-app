@@ -29,7 +29,7 @@ export function ExpenseList({ expenses, onDeleteExpense, onEditExpense, categori
 
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
-      <div className="divide-y divide-gray-200">
+      <div className="divide-y divide-gray-200 max-h-[60vh] overflow-y-auto">
         {expenses.map((expense) => {
           const category = categories.find(c => c.id === expense.category_id)?.name || 'Unknown';
           const categoryColor = categoryColors[category] || 'bg-gray-100 text-gray-800';
@@ -47,7 +47,7 @@ export function ExpenseList({ expenses, onDeleteExpense, onEditExpense, categori
                   <p className="text-sm text-gray-500">{new Date(expense.date).toLocaleDateString()}</p>
                 </div>
                 <div className="flex items-center gap-4">
-                  <p className="text-lg font-semibold text-gray-900">${expense.amount.toFixed(2)}</p>
+                  <p className="text-lg font-semibold text-gray-900">₣ {expense.amount.toFixed(2)}</p>
                   <button
                     onClick={() => onEditExpense(expense)}
                     className="text-blue-600 hover:text-blue-700 transition-colors"

@@ -48,11 +48,11 @@ export function InvestmentList({ investments, onDeleteInvestment }: InvestmentLi
                   </p>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-sm text-gray-600">
-                      Initial: ${investment.amount.toFixed(2)}
+                      Initial: ₣ {investment.amount.toFixed(2)}
                     </span>
                     <span className="text-gray-400">→</span>
                     <span className="text-sm text-gray-600">
-                      Current: ${investment.currentvalue.toFixed(2)}
+                      Current: ₣ {investment.currentvalue.toFixed(2)}
                     </span>
                   </div>
                 </div>

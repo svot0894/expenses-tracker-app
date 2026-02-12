@@ -31,11 +31,11 @@ export function InvestmentPerformance({ investments }: InvestmentPerformanceProp
         <div className="grid grid-cols-3 gap-4">
           <div>
             <p className="text-sm text-gray-600 mb-1">Total Invested</p>
-            <p className="text-xl font-bold text-gray-900">${totalInvested.toLocaleString()}</p>
+            <p className="text-xl font-bold text-gray-900">₣ {totalInvested.toLocaleString()}</p>
           </div>
           <div>
             <p className="text-sm text-gray-600 mb-1">Current Value</p>
-            <p className="text-xl font-bold text-gray-900">${totalCurrent.toLocaleString()}</p>
+            <p className="text-xl font-bold text-gray-900">₣ {totalCurrent.toLocaleString()}</p>
           </div>
           <div>
             <p className="text-sm text-gray-600 mb-1">Total Gain/Loss</p>
@@ -43,7 +43,7 @@ export function InvestmentPerformance({ investments }: InvestmentPerformanceProp
               {totalGain >= 0 ? '+' : ''}{totalGainPercent.toFixed(2)}%
             </p>
             <p className={`text-sm ${totalGain >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {totalGain >= 0 ? '+' : ''}${totalGain.toLocaleString()}
+              {totalGain >= 0 ? '+' : ''}₣ {totalGain.toLocaleString()}
             </p>
           </div>
         </div>
@@ -73,7 +73,7 @@ export function InvestmentPerformance({ investments }: InvestmentPerformanceProp
                     </span>
                   </div>
                   <p className={`text-sm ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                    {isPositive ? '+' : ''}${gain.toFixed(2)}
+                    {isPositive ? '+' : ''}₣ {gain.toFixed(2)}
                   </p>
                 </div>
               </div>
@@ -81,11 +81,11 @@ export function InvestmentPerformance({ investments }: InvestmentPerformanceProp
               <div className="grid grid-cols-3 gap-4 text-sm mb-3">
                 <div>
                   <p className="text-gray-500">Invested</p>
-                  <p className="font-medium">${inv.amount.toLocaleString()}</p>
+                  <p className="font-medium">₣ {inv.amount.toLocaleString()}</p>
                 </div>
                 <div>
                   <p className="text-gray-500">Current</p>
-                  <p className="font-medium">${inv.currentvalue.toLocaleString()}</p>
+                  <p className="font-medium">₣ {inv.currentvalue.toLocaleString()}</p>
                 </div>
                 <div>
                   <p className="text-gray-500">Allocation</p>

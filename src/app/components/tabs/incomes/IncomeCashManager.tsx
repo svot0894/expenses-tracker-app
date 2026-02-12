@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DollarSign, Edit2, Check, X } from 'lucide-react';
+import { SwissFranc, Edit2, Check, X } from 'lucide-react';
 
 interface IncomeCashManagerProps {
   liquidCash: number;
@@ -28,7 +28,7 @@ export function IncomeCashManager({ liquidCash, onUpdateCash }: IncomeCashManage
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="bg-blue-600 p-3 rounded-full">
-            <DollarSign className="text-white" size={24} />
+            <SwissFranc className="text-white" size={24} />
           </div>
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Emergency Fund / Liquid Cash</h3>
@@ -37,7 +37,7 @@ export function IncomeCashManager({ liquidCash, onUpdateCash }: IncomeCashManage
         </div>
         {!isEditing ? (
           <div className="flex items-center gap-4">
-            <p className="text-3xl font-bold text-gray-900">${liquidCash.toLocaleString()}</p>
+            <p className="text-3xl font-bold text-gray-900">₣{liquidCash.toLocaleString()}</p>
             <button
               onClick={() => setIsEditing(true)}
               className="text-blue-600 hover:text-blue-700 transition-colors p-2 hover:bg-blue-100 rounded-lg"
@@ -48,7 +48,7 @@ export function IncomeCashManager({ liquidCash, onUpdateCash }: IncomeCashManage
         ) : (
           <div className="flex items-center gap-3">
             <div className="flex items-center">
-              <span className="text-2xl font-bold text-gray-700 mr-2">$</span>
+              <span className="text-2xl font-bold text-gray-700 mr-2">₣</span>
               <input
                 type="number"
                 step="0.01"

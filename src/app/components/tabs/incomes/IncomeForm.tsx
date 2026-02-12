@@ -71,7 +71,7 @@ export function IncomeForm({ onAddIncome }: IncomeFormProps) {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Amount ($)</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Amount (₣)</label>
           <input
             type="number"
             step="0.01"

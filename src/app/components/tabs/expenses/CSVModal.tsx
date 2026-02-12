@@ -29,9 +29,9 @@ export function CSVModal({ isOpen, onClose, onImportExpenses }: CSVUploaderProps
     const lines = text.split('\n').filter(line => line.trim());
     if (lines.length === 0) return { headers: [], rows: [] };
 
-    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"₣/g, ''));
     const rows = lines.slice(1).map(line => {
-      const values = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+      const values = line.split(',').map(v => v.trim().replace(/^"|"₣/g, ''));
       const row: CSVRow = {};
       headers.forEach((header, index) => {
         row[header] = values[index] || '';
@@ -86,7 +86,7 @@ export function CSVModal({ isOpen, onClose, onImportExpenses }: CSVUploaderProps
       const expenses: Omit<Expenses, 'id'>[] = csvData.map(row => {
         let amount = parseFloat(row[columnMapping.amount]);
         if (isNaN(amount)) {
-          const cleanAmount = row[columnMapping.amount].replace(/[$,]/g, '');
+          const cleanAmount = row[columnMapping.amount].replace(/[₣,]/g, '');
           amount = parseFloat(cleanAmount);
         }
 
