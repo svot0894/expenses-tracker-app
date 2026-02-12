@@ -19,6 +19,7 @@ import { IncomeCashManager } from './components/tabs/incomes/IncomeCashManager';
 import { supabase, type Expenses, type ExpenseInsert, type ExpenseUpdate } from '../lib/supabase';
 import { type Categories } from '../lib/supabase';
 import { type Investments, type InvestmentInsert } from '../lib/supabase';
+import { type Incomes, type IncomeInsert } from '../lib/supabase';
 
 function App() {
   const [activeTab, setActiveTab] = useState<'overview' | 'expenses' | 'investments' | 'income' | 'settings'>('overview');
@@ -30,24 +31,7 @@ function App() {
   const [categories, setCategories] = useState<Categories[]>([]);
   const [expenses, setExpenses] = useState<Expenses[]>([]);
   const [investments, setInvestments] = useState<Investments[]>([]);
-
-  const [incomes, setIncomes] = useState<Income[]>([
-    {
-      id: '1',
-      source: 'Salary',
-      amount: 5000,
-      frequency: 'monthly',
-      date: '2026-02-01'
-    },
-    {
-      id: '2',
-      source: 'Freelance',
-      amount: 1500,
-      frequency: 'monthly',
-      date: '2026-02-01'
-    }
-  ]);
-
+  const [incomes, setIncomes] = useState<Incomes[]>([]);
   const [liquidCash, setLiquidCash] = useState(80000); // Emergency fund
 
   // Fetch data from Supabase on mount
@@ -80,6 +64,16 @@ function App() {
 
       if (!investmentsError && investmentsData) {
         setInvestments(investmentsData);
+      };
+
+      // Fetch incomes
+      const { data: incomesData, error: incomesError } = await supabase
+        .from('incomes')
+        .select('*')
+        .order('date', { ascending: false });
+
+      if (!incomesError && incomesData) {
+        setIncomes(incomesData);
       }
     };
 
@@ -219,12 +213,21 @@ function App() {
   };
 
   // Handlers for income
-  const handleAddIncome = (income: Omit<Income, 'id'>) => {
-    const newIncome = {
-      ...income,
-      id: Date.now().toString()
+  const handleAddIncome = async (income: Omit<Incomes, 'id'>) => {
+    const insertData : IncomeInsert = {
+      ...income
     };
-    setIncomes([newIncome, ...incomes]);
+    const { data, error } = await supabase
+      .from('incomes')
+      .insert(insertData)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error adding income:', error);
+      return;
+    }
+    setIncomes([data, ...incomes]);
   };
 
   const handleDeleteIncome = (id: string) => {
@@ -276,7 +279,6 @@ function App() {
   const monthlyIncome = incomes.reduce((sum, i) => {
     return sum + (i.frequency === 'monthly' ? i.amount : i.amount / 12);
   }, 0);
-  const annualIncome = monthlyIncome * 12;
   const annualExpenses = totalExpenses * 12;
   const monthlySavings = monthlyIncome - totalExpenses;
   const netWorth = totalInvestments + liquidCash - 0; // Assuming no debt for now
