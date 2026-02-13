@@ -1,12 +1,13 @@
+import { Auth } from '@supabase/auth-ui-react';
 import { useState, useEffect } from 'react';
-import { Wallet, Upload } from 'lucide-react';
+import { Wallet, Upload, LogOutIcon } from 'lucide-react';
 import { Dashboard } from './components/tabs/overview/Dashboard';
 import { ExpenseList } from './components/tabs/expenses/ExpenseList';
 import { InvestmentForm } from './components/tabs/investments/InvestmentForm';
 import { InvestmentList } from './components/tabs/investments/InvestmentList';
 import { ExpenseChart } from './components/tabs/expenses/ExpenseChart';
 //import { InvestmentChart } from './components/InvestmentChart';
-import { IncomeForm, type Income } from './components/tabs/incomes/IncomeForm';
+import { IncomeForm } from './components/tabs/incomes/IncomeForm';
 import { IncomeList } from './components/tabs/incomes/IncomeList';
 import { FinancialKPIs } from './components/tabs/overview/FinancialKPIs';
 import { CSVModal } from './components/tabs/expenses/CSVModal';
@@ -26,17 +27,46 @@ function App() {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
+  const [user, setUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'expenses' | 'investments' | 'income' | 'settings'>('overview');
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [isCSVModalOpen, setIsCSVModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expenses | undefined>(undefined);
-  
+
   // State for categories and expenses
   const [categories, setCategories] = useState<Categories[]>([]);
   const [expenses, setExpenses] = useState<Expenses[]>([]);
   const [investments, setInvestments] = useState<Investments[]>([]);
   const [incomes, setIncomes] = useState<Incomes[]>([]);
   const [liquidCash, setLiquidCash] = useState(80000); // Emergency fund
+
+  useEffect(() => {
+    const fetchSession = async () => {
+      const { data, error } = await supabase.auth.getSession();
+
+      if (error) {
+        console.error('Error getting session:', error);
+        return;
+      }
+      if (data.session) {
+        setUser(data.session.user);
+      }
+    };
+
+    fetchSession();
+
+    const { data: { subscription }, } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        setUser(session.user);
+      } else {
+        setUser(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   // Fetch data from Supabase on mount
   useEffect(() => {
@@ -47,7 +77,9 @@ function App() {
       // Fetch categories
       const { data: categoriesData, error: categoriesError } = await supabase
         .from('categories')
-        .select('*');
+        .select('*')
+        .eq('user_id', user.id)
+        ;
 
       if (!categoriesError && categoriesData) {
         setCategories(categoriesData);
@@ -59,6 +91,7 @@ function App() {
         .select('*')
         .gte('date', thisMonth.toISOString())
         .lt('date', nextMonth.toISOString())
+        .eq('user_id', user.id)
         .order('date', { ascending: false });
 
       if (!expensesError && expensesData) {
@@ -69,6 +102,7 @@ function App() {
       const { data: investmentsData, error: investmentsError } = await supabase
         .from('investments')
         .select('*')
+        .eq('user_id', user.id)
         .order('purchasedate', { ascending: false });
 
       if (!investmentsError && investmentsData) {
@@ -79,6 +113,7 @@ function App() {
       const { data: incomesData, error: incomesError } = await supabase
         .from('incomes')
         .select('*')
+        .eq('user_id', user.id)
         .order('date', { ascending: false });
 
       if (!incomesError && incomesData) {
@@ -97,6 +132,7 @@ function App() {
 
   const handleImportExpenses = async (importedExpenses: Omit<Expenses, 'id'>[]) => {
     const newExpenses = importedExpenses.map(exp => ({
+      user_id: user.id,
       description: exp.description,
       amount: exp.amount,
       category_id: categories.find(c => c.name === exp.category)?.id || "",
@@ -106,7 +142,7 @@ function App() {
     // Wait for all inserts to complete
     const insertedExpenses = await Promise.all(
       newExpenses.map(async (expense) => {
-        const insertData: ExpenseInsert = { ...expense };
+        const insertData: ExpenseInsert = { ...expense, user_id: user.id };
         const { data, error } = await supabase
           .from('expenses')
           .insert(insertData)
@@ -129,8 +165,9 @@ function App() {
   };
 
   const handleAddExpense = async (expense: Omit<Expenses, 'id'>) => {
-    const insertData : ExpenseInsert = {
-      ...expense
+    const insertData: ExpenseInsert = {
+      ...expense,
+      user_id: user.id,
     };
     const { data, error } = await supabase
       .from('expenses')
@@ -147,13 +184,15 @@ function App() {
 
   const handleUpdateExpense = async (expense: Omit<Expenses, 'id'>) => {
     if (editingExpense) {
-      const updateData : ExpenseUpdate = {
-        ...expense
+      const updateData: ExpenseUpdate = {
+        ...expense,
+        user_id: user.id,
       };
       const { data, error } = await supabase
         .from('expenses')
         .update(updateData)
         .eq('id', editingExpense.id)
+        .eq('user_id', user.id)
         .select()
         .single();
 
@@ -161,8 +200,8 @@ function App() {
         console.error('Error updating expense:', error);
         return;
       }
-      setExpenses(expenses.map(e => 
-        e.id === editingExpense.id 
+      setExpenses(expenses.map(e =>
+        e.id === editingExpense.id
           ? { ...data }
           : e
       ));
@@ -181,7 +220,9 @@ function App() {
     const { error } = await supabase
       .from('expenses')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', user.id)
+      ;
 
     if (error) {
       console.error('Error deleting expense:', error);
@@ -191,9 +232,10 @@ function App() {
   };
 
   // Handlers for investments
-  const handleAddInvestment = async(investment: Omit<Investments, 'id'>) => {
-    const insertData : InvestmentInsert = {
-      ...investment
+  const handleAddInvestment = async (investment: Omit<Investments, 'id'>) => {
+    const insertData: InvestmentInsert = {
+      ...investment,
+      user_id: user.id,
     };
     const { data, error } = await supabase
       .from('investments')
@@ -212,7 +254,9 @@ function App() {
     const { error } = await supabase
       .from('investments')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', user.id)
+      ;
 
     if (error) {
       console.error('Error deleting investment:', error);
@@ -223,8 +267,9 @@ function App() {
 
   // Handlers for income
   const handleAddIncome = async (income: Omit<Incomes, 'id'>) => {
-    const insertData : IncomeInsert = {
-      ...income
+    const insertData: IncomeInsert = {
+      ...income,
+      user_id: user.id,
     };
     const { data, error } = await supabase
       .from('incomes')
@@ -239,7 +284,18 @@ function App() {
     setIncomes([data, ...incomes]);
   };
 
-  const handleDeleteIncome = (id: string) => {
+  const handleDeleteIncome = async (id: string) => {
+    const { error } = await supabase
+      .from('incomes')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id)
+      ;
+
+    if (error) {
+      console.error('Error deleting incomes:', error);
+      return;
+    }
     setIncomes(incomes.filter(i => i.id !== id));
   };
 
@@ -248,7 +304,7 @@ function App() {
     if (category && !categories.some(c => c.name === category)) {
       const { data, error } = await supabase
         .from('categories')
-        .insert({ name: category })
+        .insert({ name: category, user_id: user.id, })
         .select()
         .single();
 
@@ -266,7 +322,9 @@ function App() {
       const { error } = await supabase
         .from('categories')
         .delete()
-        .eq('id', categoryToDelete.id);
+        .eq('id', categoryToDelete.id)
+        .eq('user_id', user.id)
+        ;
 
       if (!error) {
         setCategories(categories.filter(cat => cat.id !== categoryToDelete.id));
@@ -275,7 +333,7 @@ function App() {
       }
     }
   };
-  
+
   // Calculate financial metrics
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
   const totalInvestments = investments.reduce((sum, i) => sum + i.currentvalue, 0);
@@ -292,7 +350,7 @@ function App() {
   const monthlySavings = monthlyIncome - totalExpenses;
   const netWorth = totalInvestments + liquidCash - 0; // Assuming no debt for now
 
-  return (
+  return user ? (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white shadow-sm">
@@ -340,6 +398,16 @@ function App() {
               </button>
 
             </div>
+
+            {user && (
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-gray-600">Hi, {user.email}</span>
+                <LogOutIcon className="text-red-500 hover:text-red-700 transition-colors" size={16} onClick={async () => {
+                  await supabase.auth.signOut();
+                  setUser(null);
+                }} />
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -360,51 +428,46 @@ function App() {
             <nav className="flex gap-8">
               <button
                 onClick={() => setActiveTab('overview')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === 'overview'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'overview'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
               >
                 Overview
               </button>
               <button
                 onClick={() => setActiveTab('expenses')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === 'expenses'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'expenses'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
               >
                 Expenses
               </button>
               <button
                 onClick={() => setActiveTab('investments')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === 'investments'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'investments'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
               >
                 Investments
               </button>
               <button
                 onClick={() => setActiveTab('income')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === 'income'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'income'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
               >
                 Income
               </button>
               <button
                 onClick={() => setActiveTab('settings')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === 'settings'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'settings'
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
               >
                 Settings
               </button>
@@ -456,8 +519,8 @@ function App() {
                   </button>
                 </div>
                 <ExpenseTrendChart expenses={expenses} />
-                <ExpenseList 
-                  expenses={expenses} 
+                <ExpenseList
+                  expenses={expenses}
                   onDeleteExpense={handleDeleteExpense}
                   onEditExpense={handleEditExpense}
                   categories={categories}
@@ -526,6 +589,30 @@ function App() {
           onImportExpenses={handleImportExpenses}
         />
       </main>
+    </div>
+  ) : (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Welcome to Finance Tracker</h2>
+        <p className="text-sm text-gray-600 mb-6">Sign in or create an account to start tracking your finances.</p>
+        <Auth
+          supabaseClient={supabase}
+          appearance={{
+            theme: 'default',
+            variables: {
+              default: {
+                colors: {
+                  brand: '#3b82f6', // blue
+                  brandAccent: '#2563eb',
+                  brandButtonText: '#ffffff',
+                },
+              },
+            },
+          }}
+          providers={[]} // No social providers for now
+          redirectTo="http://localhost:5173" // Your dev server
+        />
+      </div>
     </div>
   );
 }

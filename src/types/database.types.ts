@@ -18,14 +18,17 @@ export type Database = {
         Row: {
           id: string
           name: string | null
+          user_id: string | null
         }
         Insert: {
           id?: string
           name?: string | null
+          user_id?: string | null
         }
         Update: {
           id?: string
           name?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -36,6 +39,7 @@ export type Database = {
           date: string
           description: string | null
           id: string
+          user_id: string | null
         }
         Insert: {
           amount: number
@@ -43,6 +47,7 @@ export type Database = {
           date: string
           description?: string | null
           id?: string
+          user_id?: string | null
         }
         Update: {
           amount?: number
@@ -50,6 +55,7 @@ export type Database = {
           date?: string
           description?: string | null
           id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -68,6 +74,7 @@ export type Database = {
           frequency: string | null
           id: string
           source: string | null
+          user_id: string | null
         }
         Insert: {
           amount: number
@@ -75,6 +82,7 @@ export type Database = {
           frequency?: string | null
           id?: string
           source?: string | null
+          user_id?: string | null
         }
         Update: {
           amount?: number
@@ -82,6 +90,7 @@ export type Database = {
           frequency?: string | null
           id?: string
           source?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -93,6 +102,7 @@ export type Database = {
           id: string
           purchasedate: string
           type: string | null
+          user_id: string | null
         }
         Insert: {
           amount: number
@@ -101,6 +111,7 @@ export type Database = {
           id?: string
           purchasedate: string
           type?: string | null
+          user_id?: string | null
         }
         Update: {
           amount?: number
@@ -109,6 +120,7 @@ export type Database = {
           id?: string
           purchasedate?: string
           type?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
