@@ -1,16 +1,9 @@
 import { useState } from 'react';
 import { Plus, X } from 'lucide-react';
-
-export interface Income {
-  id: string;
-  source: string;
-  amount: number;
-  frequency: 'monthly' | 'yearly';
-  date: string;
-}
+import { Incomes } from '../../../../lib/supabase';
 
 interface IncomeFormProps {
-  onAddIncome: (income: Omit<Income, 'id'>) => void;
+  onAddIncome: (income: Omit<Incomes, 'id'>) => void;
 }
 
 export function IncomeForm({ onAddIncome }: IncomeFormProps) {

@@ -1,4 +1,4 @@
-import { SwissFranc, TrendingUp, TrendingDown, Wallet } from 'lucide-react';
+import { PiggyBank, TrendingUp, TrendingDown, Wallet } from 'lucide-react';
 
 interface DashboardProps {
   totalBalance: number;
@@ -13,7 +13,7 @@ export function Dashboard({ totalBalance, totalExpenses, totalInvestments, month
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-gray-500 text-sm mb-1">Total Balance</p>
+            <p className="text-gray-500 text-sm mb-1">Monthly Income</p>
             <p className="text-2xl font-semibold">₣ {totalBalance.toLocaleString()}</p>
           </div>
           <div className="bg-blue-100 p-3 rounded-full">
@@ -49,13 +49,13 @@ export function Dashboard({ totalBalance, totalExpenses, totalInvestments, month
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-gray-500 text-sm mb-1">Monthly Change</p>
+            <p className="text-gray-500 text-sm mb-1">Monthly Savings Rate</p>
             <p className={`text-2xl font-semibold ${monthlyChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
               {monthlyChange >= 0 ? '+' : ''}{monthlyChange.toFixed(1)}%
             </p>
           </div>
           <div className={`${monthlyChange >= 0 ? 'bg-green-100' : 'bg-red-100'} p-3 rounded-full`}>
-            <SwissFranc className={monthlyChange >= 0 ? 'text-green-600' : 'text-red-600'} size={24} />
+            <PiggyBank className={monthlyChange >= 0 ? 'text-green-600' : 'text-red-600'} size={24} />
           </div>
         </div>
       </div>

@@ -22,7 +22,7 @@ export function FinancialKPIs({
   investmentCost
 }: FinancialKPIsProps) {
   // Financial Independence Ratio (FI Ratio)
-  // Net Worth / (Annual Expenses * 25) or Net Worth / Annual Expenses in years
+  // Net Worth / (Annual Expenses * 25)
   const fiRatio = annualExpenses > 0 ? (netWorth / annualExpenses) : 0;
   const fiPercentage = annualExpenses > 0 ? (netWorth / (annualExpenses * 25)) * 100 : 0;
 
@@ -165,12 +165,12 @@ export function FinancialKPIs({
         </div>
         
         <div className="mt-4 p-4 bg-gradient-to-r from-indigo-50 to-blue-50 rounded-lg border border-indigo-200">
-          <p className="text-sm font-medium text-indigo-900 mb-1">💰 Financial Runway</p>
+          <p className="text-sm font-medium text-indigo-900 mb-1">💰 Personal Inflation Rate</p>
           <p className="text-2xl font-bold text-indigo-700">
-            {monthlyExpenses > 0 ? ((liquidCash + investmentValue) / monthlyExpenses).toFixed(1) : '∞'} months
+            0 %
           </p>
           <p className="text-xs text-indigo-600 mt-1">
-            Total assets can cover this many months of expenses
+            Rate at which your expenses are increasing year after year
           </p>
         </div>
       </div>
