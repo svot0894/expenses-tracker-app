@@ -1,13 +1,21 @@
-// CSVModal.tsx (updated to be a modal)
-
 import { useState } from 'react';
 import { X, Check, AlertCircle } from 'lucide-react';
-import type { Expenses } from '../../../../lib/supabase';
+
+/**
+ * Imported expense shape from CSV (NOT your DB Expenses type).
+ * We keep category as a name here, so App.tsx can map it to category_id.
+ */
+export type ImportedExpense = {
+  description: string;
+  amount: number;
+  category: string;
+  date: string; // YYYY-MM-DD
+};
 
 interface CSVUploaderProps {
   isOpen: boolean;
   onClose: () => void;
-  onImportExpenses: (expenses: Omit<Expenses, 'id'>[]) => void;
+  onImportExpenses: (expenses: ImportedExpense[]) => void;
 }
 
 interface CSVRow {
@@ -21,27 +29,161 @@ export function CSVModal({ isOpen, onClose, onImportExpenses }: CSVUploaderProps
     description: '',
     amount: '',
     category: '',
-    date: ''
+    date: '',
   });
   const [error, setError] = useState('');
 
-  const parseCSV = (text: string): { headers: string[], rows: CSVRow[] } => {
-    const lines = text.split('\n').filter(line => line.trim());
+  // -----------------------
+  // Helpers
+  // -----------------------
+  const cleanCell = (value: string) =>
+    (value ?? '')
+      .trim()
+      .replace(/(^"|"$)/g, '')      // strip wrapping quotes
+      .replace(/[₣€$]/g, '')        // strip common currency symbols
+      .trim();
+
+  const detectDelimiter = (headerLine: string) => {
+    const candidates = ['|', ';', ','] as const;
+    const counts = candidates.map((d) => ({
+      d,
+      c: headerLine.split(d).length,
+    }));
+    counts.sort((a, b) => b.c - a.c);
+    return counts[0].c > 1 ? counts[0].d : '|';
+  };
+
+  // Basic CSV line split that respects quotes.
+  const splitLine = (line: string, delimiter: string) => {
+    const out: string[] = [];
+    let cur = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+
+      if (ch === '"') {
+        // toggle quotes, allow escaped quotes ("")
+        if (inQuotes && line[i + 1] === '"') {
+          cur += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+        continue;
+      }
+
+      if (ch === delimiter && !inQuotes) {
+        out.push(cur);
+        cur = '';
+        continue;
+      }
+
+      cur += ch;
+    }
+    out.push(cur);
+    return out;
+  };
+
+  const parseAmount = (raw: string): number => {
+    const s0 = cleanCell(raw);
+
+    // remove spaces
+    let s = s0.replace(/\s/g, '');
+
+    // handle Swiss thousand separators: 1'234.50
+    s = s.replace(/'/g, '');
+
+    // If format looks like EU: 1.234,56 -> remove thousands dots and swap comma -> dot
+    const hasComma = s.includes(',');
+    const hasDot = s.includes('.');
+    if (hasComma && hasDot) {
+      // assume dots are thousands and comma is decimal
+      s = s.replace(/\./g, '').replace(',', '.');
+    } else if (hasComma && !hasDot) {
+      // assume comma is decimal
+      s = s.replace(',', '.');
+    }
+
+    // strip any remaining non-numeric except minus and dot
+    s = s.replace(/[^0-9.-]/g, '');
+
+    const n = Number.parseFloat(s);
+    return Number.isFinite(n) ? n : NaN;
+  };
+
+  const pad2 = (n: number) => String(n).padStart(2, '0');
+
+  const toISODate = (raw: string): string | null => {
+    const s = cleanCell(raw);
+
+    // 1) ISO already: YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+
+    // 2) DD.MM.YYYY or DD/MM/YYYY
+    const dmy = s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/);
+    if (dmy) {
+      const dd = Number(dmy[1]);
+      const mm = Number(dmy[2]);
+      const yyyy = Number(dmy[3]);
+      if (dd >= 1 && dd <= 31 && mm >= 1 && mm <= 12) {
+        return `${yyyy}-${pad2(mm)}-${pad2(dd)}`;
+      }
+    }
+
+    // 3) Fallback: try Date parsing (works for many ISO-ish strings)
+    const d = new Date(s);
+    if (!Number.isNaN(d.getTime())) {
+      return d.toISOString().split('T')[0];
+    }
+
+    return null;
+  };
+
+  const parseCSV = (text: string): { headers: string[]; rows: CSVRow[] } => {
+    const lines = text
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+
     if (lines.length === 0) return { headers: [], rows: [] };
 
-    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"₣/g, ''));
-    const rows = lines.slice(1).map(line => {
-      const values = line.split(',').map(v => v.trim().replace(/^"|"₣/g, ''));
+    const delimiter = detectDelimiter(lines[0]);
+
+    const rawHeaders = splitLine(lines[0], delimiter).map(cleanCell);
+    const finalHeaders = rawHeaders.map((h) => h.replace(/\uFEFF/g, '').trim()); // remove BOM if present
+
+    const rows = lines.slice(1).map((line) => {
+      const values = splitLine(line, delimiter).map(cleanCell);
       const row: CSVRow = {};
-      headers.forEach((header, index) => {
-        row[header] = values[index] || '';
+      finalHeaders.forEach((header, index) => {
+        row[header] = values[index] ?? '';
       });
       return row;
     });
 
-    return { headers, rows };
+    return { headers: finalHeaders, rows };
   };
 
+  const autoDetectColumns = (hdrs: string[]) => {
+    const h = hdrs.map((x) => x.toLowerCase());
+
+    const find = (pred: (s: string) => boolean) => {
+      const idx = h.findIndex(pred);
+      return idx >= 0 ? hdrs[idx] : '';
+    };
+
+    return {
+      description: find((s) => s.includes('description') || s.includes('name') || s.includes('title') || s.includes('text')),
+      amount: find((s) => s.includes('amount') || s.includes('price') || s.includes('cost') || s.includes('value') || s.includes('debit')),
+      category: find((s) => s.includes('category') || s.includes('type') || s.includes('merchant category')),
+      date: find((s) => s.includes('date') || s.includes('booking') || s.includes('transaction')),
+    };
+  };
+
+  // -----------------------
+  // Handlers
+  // -----------------------
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -49,7 +191,7 @@ export function CSVModal({ isOpen, onClose, onImportExpenses }: CSVUploaderProps
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
-        const text = event.target?.result as string;
+        const text = String(event.target?.result ?? '');
         const { headers, rows } = parseCSV(text);
 
         if (headers.length === 0 || rows.length === 0) {
@@ -61,18 +203,12 @@ export function CSVModal({ isOpen, onClose, onImportExpenses }: CSVUploaderProps
         setCSVData(rows);
         setError('');
 
-        // Auto-detect columns
-        const mapping = {
-          description: headers.find(h => h.toLowerCase().includes('description') || h.toLowerCase().includes('description') || h.toLowerCase().includes('name')) || '',
-          amount: headers.find(h => h.toLowerCase().includes('amount') || h.toLowerCase().includes('price') || h.toLowerCase().includes('cost')) || '',
-          category: headers.find(h => h.toLowerCase().includes('category') || h.toLowerCase().includes('type')) || '',
-          date: headers.find(h => h.toLowerCase().includes('date')) || ''
-        };
-        setColumnMapping(mapping);
-      } catch (err) {
+        setColumnMapping(autoDetectColumns(headers));
+      } catch {
         setError('Error parsing CSV file');
       }
     };
+
     reader.readAsText(file);
   };
 
@@ -83,36 +219,34 @@ export function CSVModal({ isOpen, onClose, onImportExpenses }: CSVUploaderProps
     }
 
     try {
-      const expenses: Omit<Expenses, 'id'>[] = csvData.map(row => {
-        let amount = parseFloat(row[columnMapping.amount]);
-        if (isNaN(amount)) {
-          const cleanAmount = row[columnMapping.amount].replace(/[₣,]/g, '');
-          amount = parseFloat(cleanAmount);
-        }
+      const imported: ImportedExpense[] = csvData
+        .map((row) => {
+          const amount = parseAmount(row[columnMapping.amount]);
+          const isoDate = toISODate(row[columnMapping.date]);
 
-        let dateStr = row[columnMapping.date];
-        const date = new Date(dateStr);
-        if (isNaN(date.getTime())) {
-          dateStr = new Date().toISOString().split('T')[0];
-        } else {
-          dateStr = date.toISOString().split('T')[0];
-        }
+          return {
+            description: cleanCell(row[columnMapping.description]) || 'Untitled',
+            amount: Number.isFinite(amount) ? amount : 0,
+            category: cleanCell(row[columnMapping.category]) || 'Other',
+            date: isoDate ?? new Date().toISOString().split('T')[0],
+          };
+        })
+        .filter((exp) => exp.amount > 0);
 
-        return {
-          description: row[columnMapping.description] || 'Untitled',
-          amount: isNaN(amount) ? 0 : amount,
-          category: row[columnMapping.category] || 'Other',
-          date: dateStr
-        };
-      }).filter(exp => exp.amount > 0);
+      if (imported.length === 0) {
+        setError('No valid expense rows found (amount must be > 0).');
+        return;
+      }
 
-      onImportExpenses(expenses);
-      onClose(); // Close modal after import
+      onImportExpenses(imported);
+
+      // reset & close
+      onClose();
       setCSVData([]);
       setHeaders([]);
       setColumnMapping({ description: '', amount: '', category: '', date: '' });
       setError('');
-    } catch (err) {
+    } catch {
       setError('Error importing expenses. Please check your data.');
     }
   };
@@ -132,9 +266,7 @@ export function CSVModal({ isOpen, onClose, onImportExpenses }: CSVUploaderProps
         <div className="space-y-4">
           {/* File Upload */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Upload CSV File
-            </label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Upload CSV File</label>
             <input
               type="file"
               accept=".csv"
@@ -174,56 +306,58 @@ export function CSVModal({ isOpen, onClose, onImportExpenses }: CSVUploaderProps
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Select column...</option>
-                    {headers.map(header => (
-                      <option key={header} value={header}>{header}</option>
+                    {headers.map((header) => (
+                      <option key={header} value={header}>
+                        {header}
+                      </option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Amount *
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Amount *</label>
                   <select
                     value={columnMapping.amount}
                     onChange={(e) => setColumnMapping({ ...columnMapping, amount: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Select column...</option>
-                    {headers.map(header => (
-                      <option key={header} value={header}>{header}</option>
+                    {headers.map((header) => (
+                      <option key={header} value={header}>
+                        {header}
+                      </option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Category *
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
                   <select
                     value={columnMapping.category}
                     onChange={(e) => setColumnMapping({ ...columnMapping, category: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Select column...</option>
-                    {headers.map(header => (
-                      <option key={header} value={header}>{header}</option>
+                    {headers.map((header) => (
+                      <option key={header} value={header}>
+                        {header}
+                      </option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Date *
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Date *</label>
                   <select
                     value={columnMapping.date}
                     onChange={(e) => setColumnMapping({ ...columnMapping, date: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Select column...</option>
-                    {headers.map(header => (
-                      <option key={header} value={header}>{header}</option>
+                    {headers.map((header) => (
+                      <option key={header} value={header}>
+                        {header}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -234,15 +368,16 @@ export function CSVModal({ isOpen, onClose, onImportExpenses }: CSVUploaderProps
           {/* Preview */}
           {csvData.length > 0 && (
             <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-3">
-                Preview ({csvData.length} rows)
-              </h4>
+              <h4 className="font-medium text-gray-900 mb-3">Preview ({csvData.length} rows)</h4>
               <div className="overflow-x-auto max-h-48 overflow-y-auto">
                 <table className="min-w-full text-sm">
                   <thead className="bg-gray-50">
                     <tr>
-                      {headers.map(header => (
-                        <th key={header} className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                      {headers.map((header) => (
+                        <th
+                          key={header}
+                          className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase"
+                        >
                           {header}
                         </th>
                       ))}
@@ -251,7 +386,7 @@ export function CSVModal({ isOpen, onClose, onImportExpenses }: CSVUploaderProps
                   <tbody className="divide-y divide-gray-200">
                     {csvData.slice(0, 5).map((row, idx) => (
                       <tr key={idx}>
-                        {headers.map(header => (
+                        {headers.map((header) => (
                           <td key={header} className="px-3 py-2 text-gray-900">
                             {row[header]}
                           </td>
@@ -275,6 +410,7 @@ export function CSVModal({ isOpen, onClose, onImportExpenses }: CSVUploaderProps
                 <Check size={20} />
                 Import {csvData.length} Expenses
               </button>
+
               <button
                 onClick={() => {
                   setCSVData([]);

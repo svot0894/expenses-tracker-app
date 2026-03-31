@@ -1,12 +1,12 @@
 import { Auth } from '@supabase/auth-ui-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Wallet, Upload, LogOutIcon } from 'lucide-react';
+
 import { Dashboard } from './components/tabs/overview/Dashboard';
 import { ExpenseList } from './components/tabs/expenses/ExpenseList';
 import { InvestmentForm } from './components/tabs/investments/InvestmentForm';
 import { InvestmentList } from './components/tabs/investments/InvestmentList';
 import { ExpenseChart } from './components/tabs/expenses/ExpenseChart';
-//import { InvestmentChart } from './components/InvestmentChart';
 import { IncomeForm } from './components/tabs/incomes/IncomeForm';
 import { IncomeList } from './components/tabs/incomes/IncomeList';
 import { FinancialKPIs } from './components/tabs/overview/FinancialKPIs';
@@ -27,40 +27,40 @@ function App() {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
+
   const [user, setUser] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'expenses' | 'investments' | 'income' | 'settings'>('overview');
+  const [activeTab, setActiveTab] =
+    useState<'overview' | 'expenses' | 'investments' | 'income' | 'settings'>('overview');
+
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [isCSVModalOpen, setIsCSVModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expenses | undefined>(undefined);
 
-  // State for categories and expenses
   const [categories, setCategories] = useState<Categories[]>([]);
   const [expenses, setExpenses] = useState<Expenses[]>([]);
   const [investments, setInvestments] = useState<Investments[]>([]);
   const [incomes, setIncomes] = useState<Incomes[]>([]);
-  const [liquidCash, setLiquidCash] = useState(80000); // Emergency fund
+  const [liquidCash, setLiquidCash] = useState(80000);
 
+  // -----------------------
+  // Auth session handling
+  // -----------------------
   useEffect(() => {
     const fetchSession = async () => {
       const { data, error } = await supabase.auth.getSession();
-
       if (error) {
         console.error('Error getting session:', error);
         return;
       }
-      if (data.session) {
-        setUser(data.session.user);
-      }
+      setUser(data.session?.user ?? null);
     };
 
     fetchSession();
 
-    const { data: { subscription }, } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        setUser(session.user);
-      } else {
-        setUser(null);
-      }
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
     });
 
     return () => {
@@ -68,126 +68,133 @@ function App() {
     };
   }, []);
 
-  // Fetch data from Supabase on mount
+  // -----------------------
+  // Fetch data (month-sensitive for expenses only)
+  // -----------------------
   useEffect(() => {
+    if (!user?.id) return;
+
     const fetchData = async () => {
-      const thisMonth = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth(), 1);
-      const nextMonth = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 1);
+      const thisMonthUTC = new Date(Date.UTC(
+        selectedMonth.getFullYear(),
+        selectedMonth.getMonth(),
+        1
+      ));
 
-      // Fetch categories
-      const { data: categoriesData, error: categoriesError } = await supabase
-        .from('categories')
-        .select('*')
-        .eq('user_id', user.id)
-        ;
+      const nextMonthUTC = new Date(Date.UTC(
+        selectedMonth.getFullYear(),
+        selectedMonth.getMonth() + 1,
+        1
+      ));
 
-      if (!categoriesError && categoriesData) {
-        setCategories(categoriesData);
-      };
+      const [
+        { data: categoriesData, error: categoriesError },
+        { data: expensesData, error: expensesError },
+        { data: investmentsData, error: investmentsError },
+        { data: incomesData, error: incomesError },
+      ] = await Promise.all([
+        supabase.from('categories').select('*').eq('user_id', user.id),
+        supabase
+          .from('expenses')
+          .select('*')
+          .gte('date', thisMonthUTC.toISOString())
+          .lt('date', nextMonthUTC.toISOString())
+          .eq('user_id', user.id)
+          .order('date', { ascending: false }),
+        supabase
+          .from('investments')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('purchasedate', { ascending: false }),
+        // incomes are recurring sources -> do NOT filter by selectedMonth
+        supabase
+          .from('incomes')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('date', { ascending: false }),
+      ]);
 
-      // Fetch expenses
-      const { data: expensesData, error: expensesError } = await supabase
-        .from('expenses')
-        .select('*')
-        .gte('date', thisMonth.toISOString())
-        .lt('date', nextMonth.toISOString())
-        .eq('user_id', user.id)
-        .order('date', { ascending: false });
+      if (!categoriesError && categoriesData) setCategories(categoriesData);
+      if (!expensesError && expensesData) setExpenses(expensesData);
+      if (!investmentsError && investmentsData) setInvestments(investmentsData);
+      if (!incomesError && incomesData) setIncomes(incomesData);
 
-      if (!expensesError && expensesData) {
-        setExpenses(expensesData);
-      };
-
-      // Fetch investments
-      const { data: investmentsData, error: investmentsError } = await supabase
-        .from('investments')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('purchasedate', { ascending: false });
-
-      if (!investmentsError && investmentsData) {
-        setInvestments(investmentsData);
-      };
-
-      // Fetch incomes
-      const { data: incomesData, error: incomesError } = await supabase
-        .from('incomes')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('date', { ascending: false });
-
-      if (!incomesError && incomesData) {
-        setIncomes(incomesData);
-      }
+      if (categoriesError) console.error('Error fetching categories:', categoriesError);
+      if (expensesError) console.error('Error fetching expenses:', expensesError);
+      if (investmentsError) console.error('Error fetching investments:', investmentsError);
+      if (incomesError) console.error('Error fetching incomes:', incomesError);
     };
 
     fetchData();
-  }, [selectedMonth]);
+  }, [selectedMonth, user?.id]);
 
-  // Handlers for expenses
+  // -----------------------
+  // Expense modal handlers
+  // -----------------------
   const handleCloseExpenseModal = () => {
     setIsExpenseModalOpen(false);
     setEditingExpense(undefined);
   };
 
   const handleImportExpenses = async (importedExpenses: Omit<Expenses, 'id'>[]) => {
-    const newExpenses = importedExpenses.map(exp => ({
-      user_id: user.id,
-      description: exp.description,
-      amount: exp.amount,
-      category_id: categories.find(c => c.name === exp.category)?.id || "",
-      date: exp.date
-    }));
+    if (!user?.id) return;
 
-    // Wait for all inserts to complete
-    const insertedExpenses = await Promise.all(
-      newExpenses.map(async (expense) => {
-        const insertData: ExpenseInsert = { ...expense, user_id: user.id };
-        const { data, error } = await supabase
-          .from('expenses')
-          .insert(insertData)
-          .select()
-          .single();
+    const normalize = (s: string) => (s || '').trim().toLowerCase();
 
-        if (error) {
-          console.error('Error adding expense:', error);
-          return null;
-        }
-        return data;
-      })
-    );
+    const rows: ExpenseInsert[] = importedExpenses.map((exp) => {
+      const csvCategoryName = normalize((exp as any).category ?? '');
+      const categoryId = categories.find((c) => normalize(c.name) === csvCategoryName)?.id ?? '';
 
-    // Filter out any failed inserts and update state once
-    const validExpenses = insertedExpenses.filter((e): e is Expenses => e !== null);
+      return {
+        user_id: user.id,
+        description: exp.description,
+        amount: Number(exp.amount) || 0,
+        category_id: categoryId, // keep behavior; if you want strict FK safety, we can create "Uncategorized"
+        date: exp.date,
+      };
+    });
 
-    // Update state with all new expenses at once
-    setExpenses(prev => [...validExpenses, ...prev]);
+    const { data, error } = await supabase.from('expenses').insert(rows).select();
+
+    if (error) {
+      console.error('Error importing expenses:', error);
+      return;
+    }
+
+    if (data?.length) {
+      setExpenses((prev) => [...data, ...prev]);
+    }
   };
 
   const handleAddExpense = async (expense: Omit<Expenses, 'id'>) => {
+    if (!user?.id) return;
+
     const insertData: ExpenseInsert = {
       ...expense,
+      amount: Number(expense.amount) || 0,
       user_id: user.id,
     };
-    const { data, error } = await supabase
-      .from('expenses')
-      .insert(insertData)
-      .select()
-      .single();
+
+    const { data, error } = await supabase.from('expenses').insert(insertData).select().single();
 
     if (error) {
       console.error('Error adding expense:', error);
       return;
     }
-    setExpenses([data, ...expenses]);
+
+    setExpenses((prev) => [data, ...prev]);
   };
 
   const handleUpdateExpense = async (expense: Omit<Expenses, 'id'>) => {
+    if (!user?.id) return;
+
     if (editingExpense) {
       const updateData: ExpenseUpdate = {
         ...expense,
+        amount: Number(expense.amount) || 0,
         user_id: user.id,
       };
+
       const { data, error } = await supabase
         .from('expenses')
         .update(updateData)
@@ -200,14 +207,11 @@ function App() {
         console.error('Error updating expense:', error);
         return;
       }
-      setExpenses(expenses.map(e =>
-        e.id === editingExpense.id
-          ? { ...data }
-          : e
-      ));
+
+      setExpenses((prev) => prev.map((e) => (e.id === editingExpense.id ? { ...data } : e)));
       setEditingExpense(undefined);
     } else {
-      handleAddExpense(expense);
+      await handleAddExpense(expense);
     }
   };
 
@@ -217,99 +221,104 @@ function App() {
   };
 
   const handleDeleteExpense = async (id: string) => {
-    const { error } = await supabase
-      .from('expenses')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', user.id)
-      ;
+    if (!user?.id) return;
+
+    const { error } = await supabase.from('expenses').delete().eq('id', id).eq('user_id', user.id);
 
     if (error) {
       console.error('Error deleting expense:', error);
       return;
     }
-    setExpenses(expenses.filter(e => e.id !== id));
+
+    setExpenses((prev) => prev.filter((e) => e.id !== id));
   };
 
-  // Handlers for investments
+  // -----------------------
+  // Investment handlers
+  // -----------------------
   const handleAddInvestment = async (investment: Omit<Investments, 'id'>) => {
+    if (!user?.id) return;
+
     const insertData: InvestmentInsert = {
       ...investment,
+      amount: Number(investment.amount) || 0,
+      currentvalue: Number((investment as any).currentvalue) || 0,
       user_id: user.id,
     };
-    const { data, error } = await supabase
-      .from('investments')
-      .insert(insertData)
-      .select()
-      .single();
+
+    const { data, error } = await supabase.from('investments').insert(insertData).select().single();
 
     if (error) {
       console.error('Error adding investment:', error);
       return;
     }
-    setInvestments([data, ...investments]);
+
+    setInvestments((prev) => [data, ...prev]);
   };
 
   const handleDeleteInvestment = async (id: string) => {
-    const { error } = await supabase
-      .from('investments')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', user.id)
-      ;
+    if (!user?.id) return;
+
+    const { error } = await supabase.from('investments').delete().eq('id', id).eq('user_id', user.id);
 
     if (error) {
       console.error('Error deleting investment:', error);
       return;
     }
-    setInvestments(investments.filter(i => i.id !== id));
+
+    setInvestments((prev) => prev.filter((i) => i.id !== id));
   };
 
-  // Handlers for income
+  // -----------------------
+  // Income handlers (recurring sources)
+  // -----------------------
   const handleAddIncome = async (income: Omit<Incomes, 'id'>) => {
+    if (!user?.id) return;
+
     const insertData: IncomeInsert = {
       ...income,
+      amount: Number(income.amount) || 0,
       user_id: user.id,
     };
-    const { data, error } = await supabase
-      .from('incomes')
-      .insert(insertData)
-      .select()
-      .single();
+
+    const { data, error } = await supabase.from('incomes').insert(insertData).select().single();
 
     if (error) {
       console.error('Error adding income:', error);
       return;
     }
-    setIncomes([data, ...incomes]);
+
+    setIncomes((prev) => [data, ...prev]);
   };
 
   const handleDeleteIncome = async (id: string) => {
-    const { error } = await supabase
-      .from('incomes')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', user.id)
-      ;
+    if (!user?.id) return;
+
+    const { error } = await supabase.from('incomes').delete().eq('id', id).eq('user_id', user.id);
 
     if (error) {
       console.error('Error deleting incomes:', error);
       return;
     }
-    setIncomes(incomes.filter(i => i.id !== id));
+
+    setIncomes((prev) => prev.filter((i) => i.id !== id));
   };
 
-  // Handlers for categories
+  // -----------------------
+  // Category handlers
+  // -----------------------
   const handleAddCategory = async (category: string) => {
-    if (category && !categories.some(c => c.name === category)) {
+    if (!user?.id) return;
+
+    if (category && !categories.some((c) => c.name === category)) {
       const { data, error } = await supabase
         .from('categories')
-        .insert({ name: category, user_id: user.id, })
+        .insert({ name: category, user_id: user.id })
         .select()
         .single();
 
       if (!error && data) {
-        setCategories([...categories, data]);
+        setCategories((prev) => [...prev, data]);
       } else {
         console.error('Error adding category:', error);
       }
@@ -317,38 +326,96 @@ function App() {
   };
 
   const handleDeleteCategory = async (category: string) => {
-    const categoryToDelete = categories.find(c => c.name === category);
-    if (categoryToDelete) {
-      const { error } = await supabase
-        .from('categories')
-        .delete()
-        .eq('id', categoryToDelete.id)
-        .eq('user_id', user.id)
-        ;
+    if (!user?.id) return;
 
-      if (!error) {
-        setCategories(categories.filter(cat => cat.id !== categoryToDelete.id));
-      } else {
-        console.error('Error deleting category:', error);
-      }
+    const categoryToDelete = categories.find((c) => c.name === category);
+    if (!categoryToDelete) return;
+
+    const { error } = await supabase
+      .from('categories')
+      .delete()
+      .eq('id', categoryToDelete.id)
+      .eq('user_id', user.id);
+
+    if (!error) {
+      setCategories((prev) => prev.filter((cat) => cat.id !== categoryToDelete.id));
+    } else {
+      console.error('Error deleting category:', error);
     }
   };
 
-  // Calculate financial metrics
-  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
-  const totalInvestments = investments.reduce((sum, i) => sum + i.currentvalue, 0);
-  const totalInvestmentCost = investments.reduce((sum, i) => sum + i.amount, 0);
-  const investmentGain = totalInvestments - totalInvestmentCost;
-  const totalBalance = totalInvestments - totalExpenses;
-  const monthlyChange = totalInvestmentCost > 0 ? (investmentGain / totalInvestmentCost) * 100 : 0;
+  // -----------------------
+  // ✅ FIXED CALCULATIONS
+  // -----------------------
+  const metrics = useMemo(() => {
+    // Monthly expenses: already filtered by selectedMonth in query
+    const monthlyExpenses = expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
 
-  // Calculate KPI metrics
-  const monthlyIncome = incomes.reduce((sum, i) => {
-    return sum + (i.frequency === 'monthly' ? i.amount : i.amount / 12);
-  }, 0);
-  const annualExpenses = totalExpenses * 12;
-  const monthlySavings = monthlyIncome - totalExpenses;
-  const netWorth = totalInvestments + liquidCash - 0; // Assuming no debt for now
+    // Monthly income: recurring sources normalized to monthly
+    const monthlyIncome = incomes.reduce((sum, i) => {
+      const amount = Number(i.amount) || 0;
+
+      switch (i.frequency) {
+        case 'monthly':
+          return sum + amount;
+        case 'yearly':
+        case 'annual':
+          return sum + amount / 12;
+        case 'weekly':
+          return sum + (amount * 52) / 12;
+        case 'biweekly':
+          return sum + (amount * 26) / 12;
+        default:
+          // Unknown frequency -> treat as monthly (safe default)
+          return sum + amount;
+      }
+    }, 0);
+
+    const monthlySavings = monthlyIncome - monthlyExpenses;
+
+    const savingsRatePct = monthlyIncome > 0 ? (monthlySavings / monthlyIncome) * 100 : 0;
+
+    // Investments (lifetime)
+    const investmentValue = investments.reduce(
+      (sum, inv) => sum + (Number((inv as any).currentvalue) || 0),
+      0
+    );
+
+    const investmentCost = investments.reduce((sum, inv) => sum + (Number(inv.amount) || 0), 0);
+
+    const investmentGain = investmentValue - investmentCost;
+
+    const investmentReturnPct = investmentCost > 0 ? (investmentGain / investmentCost) * 100 : 0;
+
+    // Net worth (no debt tracked yet)
+    const netWorth = (Number(liquidCash) || 0) + investmentValue;
+
+    const annualExpenses = monthlyExpenses * 12;
+
+    return {
+      monthlyIncome,
+      monthlyExpenses,
+      monthlySavings,
+      savingsRatePct,
+      investmentValue,
+      investmentCost,
+      investmentGain,
+      investmentReturnPct,
+      netWorth,
+      annualExpenses,
+    };
+  }, [expenses, incomes, investments, liquidCash]);
+
+  // IMPORTANT: Keep Dashboard props as-is, but map correct values into them.
+  // Your current Dashboard seems to label:
+  //  - totalBalance -> "Monthly Income"
+  //  - totalExpenses -> "Monthly Expenses"
+  //  - totalInvestments -> "Total Investments"
+  //  - monthlyChange -> "Monthly Savings Rate"
+  const dashboardTotalBalance = metrics.monthlyIncome;
+  const dashboardTotalExpenses = metrics.monthlyExpenses;
+  const dashboardTotalInvestments = metrics.investmentValue;
+  const dashboardMonthlyChange = metrics.savingsRatePct;
 
   return user ? (
     <div className="min-h-screen bg-gray-50">
@@ -356,23 +423,17 @@ function App() {
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
-
             {/* Left Side */}
             <div className="flex items-center gap-3">
               <Wallet className="text-blue-600" size={32} />
-              <h1 className="text-3xl font-bold text-gray-900">
-                Finance Tracker
-              </h1>
+              <h1 className="text-3xl font-bold text-gray-900">Finance Tracker</h1>
             </div>
 
             {/* Right Side Month Controls */}
             <div className="flex items-center gap-3 bg-gray-100 rounded-xl px-3 py-2 shadow-sm">
-
               <button
                 onClick={() =>
-                  setSelectedMonth(prev =>
-                    new Date(prev.getFullYear(), prev.getMonth() - 1, 1)
-                  )
+                  setSelectedMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))
                 }
                 className="px-3 py-1.5 text-sm font-medium rounded-lg bg-white shadow hover:bg-gray-50 transition"
               >
@@ -380,46 +441,48 @@ function App() {
               </button>
 
               <span className="min-w-[140px] text-center font-semibold text-gray-700">
-                {selectedMonth.toLocaleString('default', {
-                  month: 'long',
-                  year: 'numeric',
-                })}
+                {selectedMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}
               </span>
 
               <button
                 onClick={() =>
-                  setSelectedMonth(prev =>
-                    new Date(prev.getFullYear(), prev.getMonth() + 1, 1)
-                  )
+                  setSelectedMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))
                 }
                 className="px-3 py-1.5 text-sm font-medium rounded-lg bg-white shadow hover:bg-gray-50 transition"
               >
                 →
               </button>
-
             </div>
 
             {user && (
               <div className="flex items-center gap-3">
                 <span className="text-sm text-gray-600">Hi, {user.email}</span>
-                <LogOutIcon className="text-red-500 hover:text-red-700 transition-colors" size={16} onClick={async () => {
-                  await supabase.auth.signOut();
-                  setUser(null);
-                }} />
+                <button
+                  aria-label="Sign out"
+                  className="p-2 rounded hover:bg-gray-100"
+                  onClick={async () => {
+                    await supabase.auth.signOut();
+                    setUser(null);
+                  }}
+                >
+                  <LogOutIcon
+                    className="text-red-500 hover:text-red-700 transition-colors"
+                    size={16}
+                  />
+                </button>
               </div>
             )}
           </div>
         </div>
       </header>
 
-
       <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Dashboard */}
         <Dashboard
-          totalBalance={totalBalance}
-          totalExpenses={totalExpenses}
-          totalInvestments={totalInvestments}
-          monthlyChange={monthlyChange}
+          totalBalance={dashboardTotalBalance}
+          totalExpenses={dashboardTotalExpenses}
+          totalInvestments={dashboardTotalInvestments}
+          monthlyChange={dashboardMonthlyChange}
         />
 
         {/* Tabs */}
@@ -428,46 +491,55 @@ function App() {
             <nav className="flex gap-8">
               <button
                 onClick={() => setActiveTab('overview')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'overview'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'overview'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
               >
                 Overview
               </button>
+
               <button
                 onClick={() => setActiveTab('expenses')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'expenses'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'expenses'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
               >
                 Expenses
               </button>
+
               <button
                 onClick={() => setActiveTab('investments')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'investments'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'investments'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
               >
                 Investments
               </button>
+
               <button
                 onClick={() => setActiveTab('income')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'income'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'income'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
               >
                 Income
               </button>
+
               <button
                 onClick={() => setActiveTab('settings')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === 'settings'
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
+                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'settings'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
               >
                 Settings
               </button>
@@ -479,20 +551,17 @@ function App() {
         {activeTab === 'overview' && (
           <div className="space-y-6">
             <FinancialKPIs
-              netWorth={netWorth}
-              annualExpenses={annualExpenses}
-              monthlyIncome={monthlyIncome}
-              monthlySavings={monthlySavings}
-              investmentValue={totalInvestments}
+              netWorth={metrics.netWorth}
+              annualExpenses={metrics.annualExpenses}
+              monthlyIncome={metrics.monthlyIncome}
+              monthlySavings={metrics.monthlySavings}
+              investmentValue={metrics.investmentValue}
               liquidCash={liquidCash}
-              investmentGain={investmentGain}
-              investmentCost={totalInvestmentCost}
+              investmentGain={metrics.investmentGain}
+              investmentCost={metrics.investmentCost}
             />
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <ExpenseChart
-                expenses={expenses}
-                categories={categories}
-              />
+              <ExpenseChart expenses={expenses} categories={categories} />
               <InvestmentPerformance investments={investments} />
             </div>
           </div>
@@ -518,7 +587,9 @@ function App() {
                     Import CSV
                   </button>
                 </div>
+
                 <ExpenseTrendChart expenses={expenses} />
+
                 <ExpenseList
                   expenses={expenses}
                   onDeleteExpense={handleDeleteExpense}
@@ -526,11 +597,9 @@ function App() {
                   categories={categories}
                 />
               </div>
+
               <div>
-                <ExpenseChart
-                  expenses={expenses}
-                  categories={categories}
-                />
+                <ExpenseChart expenses={expenses} categories={categories} />
               </div>
             </div>
           </div>
@@ -544,6 +613,7 @@ function App() {
                 <InvestmentForm onAddInvestment={handleAddInvestment} />
                 <InvestmentList investments={investments} onDeleteInvestment={handleDeleteInvestment} />
               </div>
+
               <div>
                 <InvestmentPerformance investments={investments} />
               </div>
@@ -594,7 +664,10 @@ function App() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
         <h2 className="text-xl font-bold text-gray-900 mb-4">Welcome to Finance Tracker</h2>
-        <p className="text-sm text-gray-600 mb-6">Sign in or create an account to start tracking your finances.</p>
+        <p className="text-sm text-gray-600 mb-6">
+          Sign in or create an account to start tracking your finances.
+        </p>
+
         <Auth
           supabaseClient={supabase}
           appearance={{
@@ -602,15 +675,15 @@ function App() {
             variables: {
               default: {
                 colors: {
-                  brand: '#3b82f6', // blue
+                  brand: '#3b82f6',
                   brandAccent: '#2563eb',
                   brandButtonText: '#ffffff',
                 },
               },
             },
           }}
-          providers={[]} // No social providers for now
-          redirectTo="http://localhost:5173" // Your dev server
+          providers={[]}
+          redirectTo="http://localhost:5173"
         />
       </div>
     </div>
