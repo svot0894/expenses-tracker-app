@@ -110,6 +110,8 @@ function App() {
         supabase
           .from('incomes')
           .select('*')
+          .gte('date', thisMonthUTC.toISOString())
+          .lt('date', nextMonthUTC.toISOString())
           .eq('user_id', user.id)
           .order('date', { ascending: false }),
       ]);
@@ -351,25 +353,8 @@ function App() {
     // Monthly expenses: already filtered by selectedMonth in query
     const monthlyExpenses = expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
 
-    // Monthly income: recurring sources normalized to monthly
-    const monthlyIncome = incomes.reduce((sum, i) => {
-      const amount = Number(i.amount) || 0;
-
-      switch (i.frequency) {
-        case 'monthly':
-          return sum + amount;
-        case 'yearly':
-        case 'annual':
-          return sum + amount / 12;
-        case 'weekly':
-          return sum + (amount * 52) / 12;
-        case 'biweekly':
-          return sum + (amount * 26) / 12;
-        default:
-          // Unknown frequency -> treat as monthly (safe default)
-          return sum + amount;
-      }
-    }, 0);
+    // Monthly income: already filtered by selectedMonth in query
+    const monthlyIncome = incomes.reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
 
     const monthlySavings = monthlyIncome - monthlyExpenses;
 
