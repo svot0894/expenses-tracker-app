@@ -16,19 +16,22 @@ export type Database = {
     Tables: {
       categories: {
         Row: {
+          created_by: string
+          family_id: string
           id: string
           name: string | null
-          user_id: string | null
         }
         Insert: {
+          created_by: string
+          family_id: string
           id?: string
           name?: string | null
-          user_id?: string | null
         }
         Update: {
+          created_by?: string
+          family_id?: string
           id?: string
           name?: string | null
-          user_id?: string | null
         }
         Relationships: []
       }
@@ -36,26 +39,29 @@ export type Database = {
         Row: {
           amount: number
           category_id: string
+          created_by: string
           date: string
           description: string | null
+          family_id: string
           id: string
-          user_id: string | null
         }
         Insert: {
           amount: number
           category_id: string
+          created_by: string
           date: string
           description?: string | null
+          family_id: string
           id?: string
-          user_id?: string | null
         }
         Update: {
           amount?: number
           category_id?: string
+          created_by?: string
           date?: string
           description?: string | null
+          family_id?: string
           id?: string
-          user_id?: string | null
         }
         Relationships: [
           {
@@ -67,60 +73,119 @@ export type Database = {
           },
         ]
       }
+      families: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      family_members: {
+        Row: {
+          created_at: string
+          family_id: string
+          invited_at: string | null
+          joined_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          family_id: string
+          invited_at?: string | null
+          joined_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          family_id?: string
+          invited_at?: string | null
+          joined_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "family_members_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "families"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       incomes: {
         Row: {
           amount: number
+          created_by: string
           date: string
+          family_id: string
           frequency: string | null
           id: string
           source: string | null
-          user_id: string | null
         }
         Insert: {
           amount: number
+          created_by: string
           date: string
+          family_id: string
           frequency?: string | null
           id?: string
           source?: string | null
-          user_id?: string | null
         }
         Update: {
           amount?: number
+          created_by?: string
           date?: string
+          family_id?: string
           frequency?: string | null
           id?: string
           source?: string | null
-          user_id?: string | null
         }
         Relationships: []
       }
       investments: {
         Row: {
           amount: number
+          created_by: string
           currentvalue: number
           description: string | null
+          family_id: string
           id: string
           purchasedate: string
           type: string | null
-          user_id: string | null
         }
         Insert: {
           amount: number
+          created_by: string
           currentvalue: number
           description?: string | null
+          family_id: string
           id?: string
           purchasedate: string
           type?: string | null
-          user_id?: string | null
         }
         Update: {
           amount?: number
+          created_by?: string
           currentvalue?: number
           description?: string | null
+          family_id?: string
           id?: string
           purchasedate?: string
           type?: string | null
-          user_id?: string | null
         }
         Relationships: []
       }
