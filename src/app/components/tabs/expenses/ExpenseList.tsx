@@ -5,18 +5,8 @@ interface ExpenseListProps {
   expenses: Expenses[];
   onDeleteExpense: (id: string) => void;
   onEditExpense: (expense: Expenses) => void;
-  categories: { id: string; name: string }[];
+  categories: { id: string; name: string, color: string }[];
 }
-
-const categoryColors: Record<string, string> = {
-  'Food & Dining': 'bg-orange-100 text-orange-800',
-  'Transportation': 'bg-blue-100 text-blue-800',
-  'Shopping': 'bg-purple-100 text-purple-800',
-  'Entertainment': 'bg-pink-100 text-pink-800',
-  'Bills & Utilities': 'bg-yellow-100 text-yellow-800',
-  'Healthcare': 'bg-green-100 text-green-800',
-  'Other': 'bg-gray-100 text-gray-800'
-};
 
 export function ExpenseList({ expenses, onDeleteExpense, onEditExpense, categories }: ExpenseListProps) {
   if (expenses.length === 0) {
@@ -32,7 +22,7 @@ export function ExpenseList({ expenses, onDeleteExpense, onEditExpense, categori
       <div className="divide-y divide-gray-200 max-h-[60vh] overflow-y-auto">
         {expenses.map((expense) => {
           const category = categories.find(c => c.id === expense.category_id)?.name || 'Unknown';
-          const categoryColor = categoryColors[category] || 'bg-gray-100 text-gray-800';
+          const categoryColor = categories.find(c => c.id === expense.category_id)?.color || 'bg-gray-100 text-gray-800';
 
           return (
             <div key={expense.id} className="p-4 hover:bg-gray-50 transition-colors">

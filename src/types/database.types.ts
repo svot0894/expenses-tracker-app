@@ -16,18 +16,21 @@ export type Database = {
     Tables: {
       categories: {
         Row: {
+          color: string | null
           created_by: string
           family_id: string
           id: string
           name: string | null
         }
         Insert: {
+          color?: string | null
           created_by: string
           family_id: string
           id?: string
           name?: string | null
         }
         Update: {
+          color?: string | null
           created_by?: string
           family_id?: string
           id?: string

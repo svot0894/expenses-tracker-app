@@ -593,8 +593,6 @@ function App() {
                   </button>
                 </div>
 
-                <ExpenseTrendChart expenses={expenses} />
-
                 <ExpenseList
                   expenses={expenses}
                   onDeleteExpense={handleDeleteExpense}
