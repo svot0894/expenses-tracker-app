@@ -21,6 +21,7 @@ import { supabase, type Expenses, type ExpenseInsert, type ExpenseUpdate } from 
 import { type Categories } from '../lib/supabase';
 import { type Investments, type InvestmentInsert } from '../lib/supabase';
 import { type Incomes, type IncomeInsert } from '../lib/supabase';
+import { type FamilyMembers } from '../lib/supabase';
 
 function App() {
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -29,6 +30,7 @@ function App() {
   });
 
   const [user, setUser] = useState<any>(null);
+
   const [activeTab, setActiveTab] =
     useState<'overview' | 'expenses' | 'investments' | 'income' | 'settings'>('overview');
 
@@ -41,6 +43,7 @@ function App() {
   const [investments, setInvestments] = useState<Investments[]>([]);
   const [incomes, setIncomes] = useState<Incomes[]>([]);
   const [liquidCash, setLiquidCash] = useState(80000);
+  const [familyId, setFamilyId] = useState<string | null>(null);
 
   // -----------------------
   // Auth session handling
@@ -87,24 +90,36 @@ function App() {
         1
       ));
 
+      // fetch family ID for current user (if any)
+      const { data: familyData } = await supabase
+        .from('family_members')
+        .select('family_id')
+        .eq('user_id', user.id)
+        .single();
+
+      const currentFamilyId = familyData?.family_id ?? null;
+      setFamilyId(currentFamilyId);
+
+      if (!currentFamilyId) return;
+
       const [
         { data: categoriesData, error: categoriesError },
         { data: expensesData, error: expensesError },
         { data: investmentsData, error: investmentsError },
         { data: incomesData, error: incomesError },
       ] = await Promise.all([
-        supabase.from('categories').select('*').eq('user_id', user.id),
+        supabase.from('categories').select('*').eq('family_id', currentFamilyId),
         supabase
           .from('expenses')
           .select('*')
           .gte('date', thisMonthUTC.toISOString())
           .lt('date', nextMonthUTC.toISOString())
-          .eq('user_id', user.id)
+          .eq('family_id', currentFamilyId)
           .order('date', { ascending: false }),
         supabase
           .from('investments')
           .select('*')
-          .eq('user_id', user.id)
+          .eq('family_id', currentFamilyId)
           .order('purchasedate', { ascending: false }),
         // incomes are recurring sources -> do NOT filter by selectedMonth
         supabase
@@ -112,7 +127,7 @@ function App() {
           .select('*')
           .gte('date', thisMonthUTC.toISOString())
           .lt('date', nextMonthUTC.toISOString())
-          .eq('user_id', user.id)
+          .eq('family_id', currentFamilyId)
           .order('date', { ascending: false }),
       ]);
 
@@ -148,10 +163,11 @@ function App() {
       const categoryId = categories.find((c) => normalize(c.name) === csvCategoryName)?.id ?? '';
 
       return {
-        user_id: user.id,
+        created_by: user.id,
+        family_id: familyId!,
         description: exp.description,
         amount: Number(exp.amount) || 0,
-        category_id: categoryId, // keep behavior; if you want strict FK safety, we can create "Uncategorized"
+        category_id: categoryId,
         date: exp.date,
       };
     });
@@ -174,7 +190,8 @@ function App() {
     const insertData: ExpenseInsert = {
       ...expense,
       amount: Number(expense.amount) || 0,
-      user_id: user.id,
+      created_by: user.id,
+      family_id: familyId!,
     };
 
     const { data, error } = await supabase.from('expenses').insert(insertData).select().single();
@@ -194,14 +211,15 @@ function App() {
       const updateData: ExpenseUpdate = {
         ...expense,
         amount: Number(expense.amount) || 0,
-        user_id: user.id,
+        created_by: user.id,
+        family_id: familyId!,
       };
 
       const { data, error } = await supabase
         .from('expenses')
         .update(updateData)
         .eq('id', editingExpense.id)
-        .eq('user_id', user.id)
+        .eq('family_id', familyId!)
         .select()
         .single();
 
@@ -225,7 +243,7 @@ function App() {
   const handleDeleteExpense = async (id: string) => {
     if (!user?.id) return;
 
-    const { error } = await supabase.from('expenses').delete().eq('id', id).eq('user_id', user.id);
+    const { error } = await supabase.from('expenses').delete().eq('id', id).eq('family_id', familyId!);
 
     if (error) {
       console.error('Error deleting expense:', error);
@@ -245,7 +263,8 @@ function App() {
       ...investment,
       amount: Number(investment.amount) || 0,
       currentvalue: Number((investment as any).currentvalue) || 0,
-      user_id: user.id,
+      created_by: user.id,
+      family_id: familyId!,
     };
 
     const { data, error } = await supabase.from('investments').insert(insertData).select().single();
@@ -261,7 +280,7 @@ function App() {
   const handleDeleteInvestment = async (id: string) => {
     if (!user?.id) return;
 
-    const { error } = await supabase.from('investments').delete().eq('id', id).eq('user_id', user.id);
+    const { error } = await supabase.from('investments').delete().eq('id', id).eq('family_id', familyId!);
 
     if (error) {
       console.error('Error deleting investment:', error);
@@ -280,7 +299,8 @@ function App() {
     const insertData: IncomeInsert = {
       ...income,
       amount: Number(income.amount) || 0,
-      user_id: user.id,
+      created_by: user.id,
+      family_id: familyId!,
     };
 
     const { data, error } = await supabase.from('incomes').insert(insertData).select().single();
@@ -296,7 +316,7 @@ function App() {
   const handleDeleteIncome = async (id: string) => {
     if (!user?.id) return;
 
-    const { error } = await supabase.from('incomes').delete().eq('id', id).eq('user_id', user.id);
+    const { error } = await supabase.from('incomes').delete().eq('id', id).eq('family_id', familyId!);
 
     if (error) {
       console.error('Error deleting incomes:', error);
@@ -315,7 +335,7 @@ function App() {
     if (category && !categories.some((c) => c.name === category)) {
       const { data, error } = await supabase
         .from('categories')
-        .insert({ name: category, user_id: user.id })
+        .insert({ name: category, created_by: user.id, family_id: familyId! })
         .select()
         .single();
 
@@ -337,7 +357,7 @@ function App() {
       .from('categories')
       .delete()
       .eq('id', categoryToDelete.id)
-      .eq('user_id', user.id);
+      .eq('family_id', familyId!);
 
     if (!error) {
       setCategories((prev) => prev.filter((cat) => cat.id !== categoryToDelete.id));

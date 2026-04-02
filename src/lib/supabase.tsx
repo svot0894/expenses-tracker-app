@@ -15,6 +15,7 @@ export type Categories = Database["public"]["Tables"]["categories"]["Row"];
 export type Expenses = Database["public"]["Tables"]["expenses"]["Row"];
 export type Incomes = Database["public"]["Tables"]["incomes"]["Row"];
 export type Investments = Database["public"]["Tables"]["investments"]["Row"];
+export type FamilyMembers = Database["public"]["Tables"]["family_members"]["Row"];
 
 // export types for insert
 export type CategoryInsert = Database["public"]["Tables"]["categories"]["Insert"];
