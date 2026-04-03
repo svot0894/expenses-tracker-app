@@ -329,13 +329,13 @@ function App() {
   // -----------------------
   // Category handlers
   // -----------------------
-  const handleAddCategory = async (category: string) => {
-    if (!user?.id) return;
+  const handleAddCategory = async (category: string, color: string) => {
+    if (!user?.id || !familyId) return;
 
     if (category && !categories.some((c) => c.name === category)) {
       const { data, error } = await supabase
         .from('categories')
-        .insert({ name: category, created_by: user.id, family_id: familyId! })
+        .insert({ name: category, color, created_by: user.id, family_id: familyId! })
         .select()
         .single();
 
@@ -344,6 +344,22 @@ function App() {
       } else {
         console.error('Error adding category:', error);
       }
+    }
+  };
+
+  const handleUpdateCategory = async (categoryId: number, newName: string, newColor: string) => {
+    if (!user?.id || !familyId) return;
+
+    const { error } = await supabase
+      .from('categories')
+      .update({ name: newName, color: newColor })
+      .eq('id', categoryId)
+      .eq('family_id', familyId!);
+
+    if (!error) {
+      setCategories((prev) => prev.map((cat) => (cat.id === categoryId ? { ...cat, name: newName, color: newColor } : cat)));
+    } else {
+      console.error('Error updating category:', error);
     }
   };
 
@@ -411,12 +427,6 @@ function App() {
     };
   }, [expenses, incomes, investments, liquidCash]);
 
-  // IMPORTANT: Keep Dashboard props as-is, but map correct values into them.
-  // Your current Dashboard seems to label:
-  //  - totalBalance -> "Monthly Income"
-  //  - totalExpenses -> "Monthly Expenses"
-  //  - totalInvestments -> "Total Investments"
-  //  - monthlyChange -> "Monthly Savings Rate"
   const dashboardTotalBalance = metrics.monthlyIncome;
   const dashboardTotalExpenses = metrics.monthlyExpenses;
   const dashboardTotalInvestments = metrics.investmentValue;
@@ -642,7 +652,11 @@ function App() {
           <Settings
             categories={categories}
             onAddCategory={handleAddCategory}
+            onUpdateCategory={handleUpdateCategory}
             onDeleteCategory={handleDeleteCategory}
+            members={[]} // TODO: pass family members data
+            onInviteMember={() => {}} // TODO: implement invite member handler
+            onRemoveMember={() => {}} // TODO: implement remove member handler
           />
         )}
 
